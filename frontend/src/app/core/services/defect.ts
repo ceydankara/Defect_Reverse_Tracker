@@ -7,11 +7,11 @@ import { AnalysisResponseDto } from '../models/defect.model';
   providedIn: 'root'
 })
 export class DefectService {
-  private apiUrl = 'http://localhost:8080/api';
+  private apiUrl = 'http://localhost:8080/api/analysis';
 
   constructor(private http: HttpClient) {}
 
   getAnalysis(coilId: string): Observable<AnalysisResponseDto> {
-    return this.http.get<AnalysisResponseDto>(`${this.apiUrl}/analysis/${coilId}`);
+    return this.http.get<AnalysisResponseDto>(`${this.apiUrl}/${coilId}`);
   }
 }

@@ -1,8 +1,7 @@
 package com.example.defecttracker.service;
 
 import com.example.defecttracker.dto.AnalysisResponseDto;
-import com.example.defecttracker.entity
-        .Coil;
+import com.example.defecttracker.entity.Coil;
 import com.example.defecttracker.entity.Defect;
 import com.example.defecttracker.entity.ProcessStage;
 import com.example.defecttracker.entity.RootCauseResult;
@@ -36,7 +35,7 @@ public class AnalysisService {
         response.setCoilId(coilId);
 
         // 1. Kusur Bilgisi
-        List<Defect> defects = defectRepository.findByCoil_CoilId(coilId);
+        List<Defect> defects = defectRepository.findByCoilId(coilId);
         if (!defects.isEmpty()) {
             response.setDefectCode(defects.get(0).getDefectCode());
         }
