@@ -1,7 +1,12 @@
 package com.example.defecttracker.repository;
+
 import com.example.defecttracker.entity.Defect;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
 public interface DefectRepository extends JpaRepository<Defect, Long> {
-    Optional<Defect> findByCoilId(String coilId);
+    List<Defect> findByCoil_CoilId(String coilId);
 }
