@@ -1,0 +1,109 @@
+<div class="tracker-container">
+
+  <!-- 1. ÜST PANEL: GİRDİ ALANLARI VE BUTON -->
+  <div class="panel-box">
+    <div class="panel-title">ANALİZ PARAMETRELERİ</div>
+    <div class="form-row">
+
+      <!-- Bobin ID Giriş Kutusu -->
+      <div class="input-group">
+        <label for="batchId">Bobin ID</label>
+        <input
+          id="batchId"
+          type="text"
+          [(ngModel)]="batchId"
+          placeholder="Örn: BOBIN-2026-9041"
+          class="dark-input"
+        />
+      </div>
+
+      <!-- Kusur / Hasar Tipi Giriş Kutusu -->
+      <div class="input-group">
+        <label for="defectType">Kusur / Hasar Tipi</label>
+        <input
+          id="defectType"
+          type="text"
+          [(ngModel)]="defectType"
+          placeholder="Örn: DEF_EDGE"
+          class="dark-input"
+        />
+      </div>
+
+      <!-- Kök Neden Analizi Başlat Butonu -->
+      <button
+        type="button"
+        (click)="onStartAnalysis()"
+        [disabled]="isLoading"
+        class="btn-start-analysis">
+        {{ isLoading ? 'Analiz Yapılıyor...' : 'Kök Neden Analizi Başlat' }}
+      </button>
+
+    </div>
+  </div>
+
+  <!-- 2. ÜRETİM HATTI AŞAMALARI (İLK AÇILIŞTA BEKLEMEDE, BUTONA BASILINCA OK/ANOMALİ) -->
+  <div class="panel-box">
+    <div class="panel-title">ÜRETİM HATTI</div>
+
+    <div class="stages-row">
+      <div *ngFor="let stage of stages"
+           class="stage-card"
+           [class.card-anomali]="stage.status === 'ANOMALİ'">
+        <div class="stage-name">{{ stage.title }}</div>
+        <span class="badge"
+              [class.badge-waiting]="stage.status === 'BEKLEMEDE'"
+              [class.badge-ok]="stage.status === 'OK'"
+              [class.badge-anomali]="stage.status === 'ANOMALİ'">
+          • {{ stage.status }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HATA MESAJI (EĞER BATTİN BİLGİSİ BULUNAMAZSA) -->
+  <div *ngIf="errorMessage" class="error-alert">
+    {{ errorMessage }}
+  </div>
+
+  <!-- 3. ALT DETAY PANELLERİ (SADECE ANALİZ BUTONUNA BASILDIĞINDA AÇILIR) -->
+  <div *ngIf="isAnalyzed" class="analysis-details-fade-in">
+
+    <!-- KÖK NEDEN VE HASAR KAYNAĞI -->
+    <div class="panel-box root-cause-card" *ngIf="rootCauses.length > 0">
+      <div class="panel-title">HASAR KAYNAĞI SINIFLANDIRICI</div>
+
+      <div class="results-grid">
+        <div *ngFor="let row of rootCauses" class="result-row">
+          <span class="res-label">{{ row.label }}:</span>
+          <span class="res-value">{{ row.value }}</span>
+        </div>
+      </div>
+
+      <div class="indicators-box" *ngIf="indicators.length > 0">
+        <div class="ind-title">KANIT GÖSTERGELERİ & AKSİYON:</div>
+        <ul>
+          <li *ngFor="let ind of indicators">{{ ind }}</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SENSÖR ÖZET KARTLARI -->
+    <div class="panel-box" *ngIf="sensors.length > 0">
+      <div class="panel-title">TÜM AŞAMA SENSÖRLERİ — ÖZET</div>
+      <div class="sensor-grid">
+        <div *ngFor="let sensor of sensors"
+             class="sensor-card"
+             [class.sensor-anomali]="sensor.state === 'Anormal'">
+          <div class="sensor-header">
+            <span class="sensor-title">{{ sensor.title }}</span>
+            <span class="sensor-delta" [class.text-danger]="sensor.state === 'Anormal'">{{ sensor.delta }}</span>
+          </div>
+          <div class="sensor-value">{{ sensor.value }} <small>{{ sensor.unit }}</small></div>
+          <div class="sensor-state">Durum: {{ sensor.state }}</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

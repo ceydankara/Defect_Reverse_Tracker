@@ -1,24 +1,44 @@
-export interface Defect {
-  id?: number;
-  productSerialNo: string;
-  lotNumber: string;
-  defectType: string;
-  description: string;
-  reportedBy: string;
-  createdDate?: string;
-  status: 'OPEN' | 'IN_INVESTIGATION' | 'RESOLVED' | 'CLOSED';
+export interface AnalysisResponseDto {
+  coilId: string;
+  defectCode: string;
+  stages: StageDto[];
+  rootCause: RootCauseDto;
+  sensorSummaries: SensorSummaryDto[];
+  timeSeriesData: TimeSeriesReadingDto[];
 }
 
-export interface ProductionStep {
-  stepName: string;
-  machineId: string;
-  timestamp: string;
-  operatorName: string;
-  status: 'SUCCESS' | 'WARNING' | 'FAILED';
-  rawMaterialLot?: string;
+export interface StageDto {
+  stageName: string;
+  stageOrder: number;
+  status: string; // 'OK' | 'ANOMALI' | 'BEKLEMEDE'
+  sensorCount: number;
 }
 
-export interface DefectTraceability {
-  defect: Defect;
-  productionHistory: ProductionStep[];
+export interface RootCauseDto {
+  equipment: string;
+  faultSource: string;
+  detectionDetail: string;
+  confidenceRate: number;
+  productionImpactPct: number;
+  logisticImpactPct: number;
+  recommendedAction: string;
+}
+
+export interface SensorSummaryDto {
+  sensorKey: string;
+  lastActualValue: number;
+  targetValue: number;
+  minLimit: number;
+  maxLimit: number;
+  status: string;
+  percentageDeviation: number;
+}
+
+export interface TimeSeriesReadingDto {
+  sensorKey: string;
+  timeSecond: number;
+  actualValue: number;
+  targetValue: number;
+  minLimit: number;
+  maxLimit: number;
 }

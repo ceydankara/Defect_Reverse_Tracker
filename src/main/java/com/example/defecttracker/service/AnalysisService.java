@@ -1,68 +1,58 @@
 package com.example.defecttracker.service;
 
 import com.example.defecttracker.dto.AnalysisResponseDto;
-import com.example.defecttracker.entity.*;
+import com.example.defecttracker.entity
+        .Coil;
+import com.example.defecttracker.entity.Defect;
+import com.example.defecttracker.entity.ProcessStage;
+import com.example.defecttracker.entity.RootCauseResult;
+import com.example.defecttracker.entity.SensorReading;
 import com.example.defecttracker.repository.*;
-import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class AnalysisService {
 
-    private final DefectRepository defectRepository;
-    private final ProcessStageRepository processStageRepository;
-    private final RootCauseResultRepository rootCauseResultRepository;
-    private final SensorReadingRepository sensorReadingRepository;
+    @Autowired private CoilRepository coilRepository;
+    @Autowired private DefectRepository defectRepository;
+    @Autowired private ProcessStageRepository processStageRepository;
+    @Autowired private RootCauseResultRepository rootCauseResultRepository;
+    @Autowired private SensorReadingRepository sensorReadingRepository;
 
-    public AnalysisResponseDto analyzeCoil(String coilId) {
+    public AnalysisResponseDto getAnalysisByCoilId(String coilId) {
+        Optional<Coil> coilOpt = coilRepository.findById(coilId);
+        if (coilOpt.isEmpty()) {
+            return null;
+        }
+
         AnalysisResponseDto response = new AnalysisResponseDto();
         response.setCoilId(coilId);
 
-        // 1. Kusur Kodunu Al
-        defectRepository.findByCoilId(coilId)
-                .ifPresent(d -> response.setDefectCode(d.getDefectCode()));
+        // 1. Kusur Bilgisi
+        List<Defect> defects = defectRepository.findByCoil_CoilId(coilId);
+        if (!defects.isEmpty()) {
+            response.setDefectCode(defects.get(0).getDefectCode());
+        }
 
-        // 2. Üretim Hattı Aşamalarını Al
-        List<ProcessStage> stages = processStageRepository.findByCoilIdOrderByStageOrderAsc(coilId);
-        response.setStages(stages.stream().map(s -> {
-            AnalysisResponseDto.StageDto dto = new AnalysisResponseDto.StageDto();
-            dto.setStageName(s.getStageName());
-            dto.setStageOrder(s.getStageOrder());
-            dto.setStatus(s.getStatus());
-            dto.setSensorCount(s.getSensorCount());
-            return dto;
-        }).collect(Collectors.toList()));
+        // 2. Sensör Verilerini Çek
+        List<SensorReading> readings = sensorReadingRepository.findByCoil_CoilIdOrderByTimeSecondAsc(coilId);
 
-        // 3. Kök Neden Analiz Bilgisini Al
-        rootCauseResultRepository.findByCoilId(coilId).ifPresent(rc -> {
-            AnalysisResponseDto.RootCauseDto rcDto = new AnalysisResponseDto.RootCauseDto();
-            rcDto.setEquipment(rc.getEquipment());
-            rcDto.setFaultSource(rc.getFaultSource());
-            rcDto.setDetectionDetail(rc.getDetectionDetail());
-            rcDto.setConfidenceRate(rc.getConfidenceRate());
-            rcDto.setProductionImpactPct(rc.getProductionImpactPct());
-            rcDto.setLogisticImpactPct(rc.getLogisticImpactPct());
-            rcDto.setRecommendedAction(rc.getRecommendedAction());
-            response.setRootCause(rcDto);
-        });
+        // 3. Dinamik Anomali ve Tolerans Hesabı
+        Map<String, Boolean> stageAnomalies = new HashMap<>();
+        boolean isAnyProductionAnomaly = false;
 
-        // 4. Anomali Olan Aşamayı Bul ve Sensör Verilerini Çek
-        String anomalyStageName = stages.stream()
-                .filter(s -> "ANOMALI".equalsIgnoreCase(s.getStatus()))
-                .map(ProcessStage::getStageName)
-                .findFirst()
-                .orElse(stages.isEmpty() ? "" : stages.get(0).getStageName());
+        List<AnalysisResponseDto.TimeSeriesReadingDto> timeSeries = new ArrayList<>();
+        Map<String, SensorReading> latestReadingsMap = new LinkedHashMap<>();
 
-        List<SensorReading> readings = sensorReadingRepository.findByCoilIdAndStageName(coilId, anomalyStageName);
-
-        // Grafik için Zaman Serisini Doldur
-        response.setTimeSeriesData(readings.stream().map(r -> {
+        for (SensorReading r : readings) {
+            // Zaman serisi DTO eşleme
             AnalysisResponseDto.TimeSeriesReadingDto ts = new AnalysisResponseDto.TimeSeriesReadingDto();
             ts.setSensorKey(r.getSensorKey());
             ts.setTimeSecond(r.getTimeSecond());
@@ -70,38 +60,93 @@ public class AnalysisService {
             ts.setTargetValue(r.getTargetValue());
             ts.setMinLimit(r.getMinLimit());
             ts.setMaxLimit(r.getMaxLimit());
-            return ts;
-        }).collect(Collectors.toList()));
+            timeSeries.add(ts);
 
-        // 4 Kart İçin Sensör Özetlerini Oluştur
-        var groupedBySensor = readings.stream()
-                .collect(Collectors.groupingBy(SensorReading::getSensorKey));
+            // Tolerans Kontrolü (min_limit ve max_limit dışına çıkılmış mı?)
+            boolean isOutOfBounds = false;
+            if (r.getMinLimit() != null && r.getActualValue().compareTo(r.getMinLimit()) < 0) isOutOfBounds = true;
+            if (r.getMaxLimit() != null && r.getActualValue().compareTo(r.getMaxLimit()) > 0) isOutOfBounds = true;
 
-        List<AnalysisResponseDto.SensorSummaryDto> summaries = groupedBySensor.entrySet().stream().map(entry -> {
-            SensorReading latest = entry.getValue().stream()
-                    .max((a, b) -> a.getTimeSecond().compareTo(b.getTimeSecond()))
-                    .orElse(entry.getValue().get(0));
-
-            AnalysisResponseDto.SensorSummaryDto card = new AnalysisResponseDto.SensorSummaryDto();
-            card.setSensorKey(latest.getSensorKey());
-            card.setLastActualValue(latest.getActualValue());
-            card.setTargetValue(latest.getTargetValue());
-            card.setMinLimit(latest.getMinLimit());
-            card.setMaxLimit(latest.getMaxLimit());
-
-            if (latest.getTargetValue() != null && latest.getTargetValue().doubleValue() != 0) {
-                BigDecimal dev = latest.getActualValue().subtract(latest.getTargetValue())
-                        .divide(latest.getTargetValue(), 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100));
-                card.setPercentageDeviation(dev.setScale(1, RoundingMode.HALF_UP));
+            if (isOutOfBounds) {
+                stageAnomalies.put(r.getStageName(), true);
+                isAnyProductionAnomaly = true;
             }
 
-            boolean isOut = (latest.getMinLimit() != null && latest.getActualValue().compareTo(latest.getMinLimit()) < 0) ||
-                    (latest.getMaxLimit() != null && latest.getActualValue().compareTo(latest.getMaxLimit()) > 0);
+            latestReadingsMap.put(r.getSensorKey(), r);
+        }
+        response.setTimeSeriesData(timeSeries);
 
-            card.setStatus(isOut ? "ANOMALI" : "OK");
+        // 4. Aşama Durumlarını Güncelle ve DTO'ya Yaz
+        List<ProcessStage> stages = processStageRepository.findByCoil_CoilIdOrderByStageOrderAsc(coilId);
+        List<AnalysisResponseDto.StageDto> stageDtos = stages.stream().map(s -> {
+            AnalysisResponseDto.StageDto dto = new AnalysisResponseDto.StageDto();
+            dto.setStageName(s.getStageName());
+            dto.setStageOrder(s.getStageOrder());
 
-            return card;
+            // Eğer sensörlerden herhangi biri bu aşamada anomali verdiyse ANOMALI yap
+            boolean hasAnomaly = stageAnomalies.getOrDefault(s.getStageName(), false);
+            dto.setStatus(hasAnomaly ? "ANOMALI" : "OK");
+            dto.setSensorCount(s.getSensorCount());
+            return dto;
+        }).collect(Collectors.toList());
+        response.setStages(stageDtos);
+
+        // 5. Kök Neden (Root Cause) Mantığı (Üretim mi / Lojistik mi?)
+        Optional<RootCauseResult> rcOpt = rootCauseResultRepository.findByCoil_CoilId(coilId);
+        AnalysisResponseDto.RootCauseDto rcDto = new AnalysisResponseDto.RootCauseDto();
+
+        if (rcOpt.isPresent()) {
+            RootCauseResult rc = rcOpt.get();
+            rcDto.setEquipment(rc.getEquipment());
+            rcDto.setFaultSource(rc.getFaultSource());
+            rcDto.setDetectionDetail(rc.getDetectionDetail());
+            rcDto.setConfidenceRate(rc.getConfidenceRate());
+            rcDto.setProductionImpactPct(rc.getProductionImpactPct());
+            rcDto.setLogisticImpactPct(rc.getLogisticImpactPct());
+            rcDto.setRecommendedAction(rc.getRecommendedAction());
+        } else {
+            // Veritabanında manuel kök neden yoksa Otomatik Mantık Çalıştır:
+            if (!isAnyProductionAnomaly) {
+                // HİÇBİR ANOMALİ YOKSA -> LOJİSTİK KAYNAKLI
+                rcDto.setEquipment("DEPO / SEVKİYAT");
+                rcDto.setFaultSource("Depolama / İstif kaynaklı ezilme/hasar");
+                rcDto.setDetectionDetail("Tüm üretim hattı sensörleri nominal aralıkta. Hasar profili kademeli dış darbe yüküyle uyumlu.");
+                rcDto.setConfidenceRate(new BigDecimal("88.00"));
+                rcDto.setProductionImpactPct(0);
+                rcDto.setLogisticImpactPct(100);
+                rcDto.setRecommendedAction("Depo istifleme düzenini ve forklift operasyonu kayıtlarını gözden geçirin.");
+            } else {
+                // ÜRETİM HATTINDA SAPMA VARSA -> ÜRETİM KAYNAKLI
+                rcDto.setEquipment("ÜRETİM HATTI HATA NOKTASI");
+                rcDto.setFaultSource("Sensör limit aşımı ve proses tolerans sapması");
+                rcDto.setDetectionDetail("Üretim aşamalarındaki sensörlerde tolerans sınırları dışında sapma tespit edildi.");
+                rcDto.setConfidenceRate(new BigDecimal("92.50"));
+                rcDto.setProductionImpactPct(90);
+                rcDto.setLogisticImpactPct(10);
+                rcDto.setRecommendedAction("İlgili üretim hattı ekipmanlarını ve sensör kalibrasyonlarını denetleyin.");
+            }
+        }
+        response.setRootCause(rcDto);
+
+        // 6. Sensör Özet Kartları
+        List<AnalysisResponseDto.SensorSummaryDto> summaries = latestReadingsMap.values().stream().map(r -> {
+            AnalysisResponseDto.SensorSummaryDto summary = new AnalysisResponseDto.SensorSummaryDto();
+            summary.setSensorKey(r.getSensorKey());
+            summary.setLastActualValue(r.getActualValue());
+            summary.setTargetValue(r.getTargetValue());
+            summary.setMinLimit(r.getMinLimit());
+            summary.setMaxLimit(r.getMaxLimit());
+
+            boolean isAnomali = (r.getMinLimit() != null && r.getActualValue().compareTo(r.getMinLimit()) < 0) ||
+                    (r.getMaxLimit() != null && r.getActualValue().compareTo(r.getMaxLimit()) > 0);
+            summary.setStatus(isAnomali ? "ANOMALI" : "OK");
+
+            if (r.getTargetValue() != null && r.getTargetValue().compareTo(BigDecimal.ZERO) != 0) {
+                BigDecimal diff = r.getActualValue().subtract(r.getTargetValue());
+                BigDecimal deviation = diff.divide(r.getTargetValue(), 4, RoundingMode.HALF_UP).multiply(new BigDecimal(100));
+                summary.setPercentageDeviation(deviation.setScale(1, RoundingMode.HALF_UP));
+            }
+            return summary;
         }).collect(Collectors.toList());
 
         response.setSensorSummaries(summaries);
