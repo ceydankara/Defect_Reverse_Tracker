@@ -36,8 +36,8 @@ interface ResultRow {
   styleUrl: './defect-tracker.scss'
 })
 export class DefectTrackerComponent {
-  batchId: string = 'BOBIN-2026-9041';
-  defectType: string = 'DEF_EDGE';
+  batchId: string = '';
+  defectType: string = '';
 
   isAnalyzed: boolean = false;
   isLoading: boolean = false;
