@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DefectService } from '../../core/services/defect'; // Path'i kendi klasör yapınıza göre doğrulayın
+import { DefectService } from '../../core/services/defect'; // Path'i kendi proje yapınıza göre kontrol edin
 import { AnalysisResponseDto } from '../../core/models/defect.model';
 
 type StageStatus = 'OK' | 'BEKLEMEDE' | 'ANOMALİ';
@@ -19,6 +19,7 @@ interface SensorCard {
   unit: string;
   delta: string;
   state: string;
+  stageName?: string; // Sensörün hangi aşamaya ait olduğunu belirtir
   spark: 'amber' | 'cyan' | 'violet' | 'teal';
 }
 
@@ -42,16 +43,20 @@ export class DefectTrackerComponent {
   isLoading: boolean = false;
   errorMessage: string = '';
 
+  // Filtreleme için durum takibi
+  selectedStageName: string | null = null;
+  allSensors: SensorCard[] = [];      // Backend'den gelen tüm sensörler (16 adet)
+  filteredSensors: SensorCard[] = []; // Ekranda listelenen filtrelenmiş sensörler
+
   stages: StageCard[] = [
-    { title: 'Çelikhane', status: 'BEKLEMEDE', value: '4 adım', delta: '0%' },
-    { title: 'Sıcak Haddehane', status: 'BEKLEMEDE', value: '4 adım', delta: '0%' },
-    { title: 'Asitleme', status: 'BEKLEMEDE', value: '4 adım', delta: '0%' },
-    { title: 'Soğuk Haddehane', status: 'BEKLEMEDE', value: '4 adım', delta: '0%' }
+    { title: 'Çelikhane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' },
+    { title: 'Sıcak Haddehane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' },
+    { title: 'Asitleme', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' },
+    { title: 'Soğuk Haddehane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' }
   ];
 
   indicators: string[] = [];
   rootCauses: ResultRow[] = [];
-  sensors: SensorCard[] = [];
 
   constructor(private defectService: DefectService) {}
 
@@ -63,10 +68,11 @@ export class DefectTrackerComponent {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.selectedStageName = null; // Analiz her başladığında filtreyi sıfırla
 
     this.defectService.getAnalysis(this.batchId.trim()).subscribe({
       next: (data: AnalysisResponseDto) => {
-        console.log('Backend Response:', data); // F12 Konsolundan gelen veriyi kontrol edebilirsiniz
+        console.log('Backend Response:', data);
 
         if (!data) {
           this.errorMessage = 'Bobin bulundu ancak analiz verisi boş geldi.';
@@ -102,21 +108,25 @@ export class DefectTrackerComponent {
           ];
         }
 
-        // 3. Sensör Kartları Güncelleme
+        // 3. Sensör Kartları Güncelleme ve Hafızaya Alma
         if (data.sensorSummaries && data.sensorSummaries.length > 0) {
           const colors: ('amber' | 'cyan' | 'violet' | 'teal')[] = ['amber', 'cyan', 'violet', 'teal'];
 
-          this.sensors = data.sensorSummaries.map((s, index) => ({
+          this.allSensors = data.sensorSummaries.map((s, index) => ({
             title: s.sensorKey,
             value: s.lastActualValue !== undefined && s.lastActualValue !== null ? s.lastActualValue.toString() : '0',
             unit: 'değer',
             delta: `${s.percentageDeviation && s.percentageDeviation > 0 ? '+' : ''}${s.percentageDeviation || 0}%`,
             state: s.status === 'ANOMALI' ? 'Anormal' : 'Normal',
+            stageName: (s as any).stageName, // (s as any) ile TypeScript tip hatası engellendi
             spark: colors[index % colors.length]
           }));
+
+          // İlk analiz açılışında tüm sensörleri yükle
+          this.filteredSensors = [...this.allSensors];
         }
 
-        this.isAnalyzed = true; // Bütün veriler eşlendikten sonra panelleri aç
+        this.isAnalyzed = true;
         this.isLoading = false;
       },
       error: (err) => {
@@ -126,5 +136,48 @@ export class DefectTrackerComponent {
         this.isLoading = false;
       }
     });
+  }
+
+  // AŞAMA KARTLARINA TIKLANDIĞINDA SENSÖRLERİ AKILLI FİLTRELEYEN METOD
+  selectStage(stageTitle: string): void {
+    if (!this.isAnalyzed) return; // Analiz yapılmadıysa tıklamayı pasif tut
+
+    // Aynı aşamaya tekrar tıklandığında filtreyi kaldırır (Tüm sensörleri gösterir)
+    if (this.selectedStageName === stageTitle) {
+      this.selectedStageName = null;
+      this.filteredSensors = [...this.allSensors];
+      return;
+    }
+
+    this.selectedStageName = stageTitle;
+
+    // 1. Yaklaşım: Doğrudan stageName eşleşmesi kontrol edilir
+    let matches = this.allSensors.filter(sensor =>
+      sensor.stageName && sensor.stageName.toLowerCase().trim() === stageTitle.toLowerCase().trim()
+    );
+
+    // 2. Yaklaşım: Eğer DTO'dan stageName boş geldiyse, sensör başlığındaki anahtar kelimelere göre filtrele
+    if (matches.length === 0) {
+      const titleLower = stageTitle.toLowerCase();
+
+      matches = this.allSensors.filter(sensor => {
+        const sKey = sensor.title.toLowerCase();
+
+        if (titleLower.includes('çelikhane')) {
+          return sKey.includes('fırın') || sKey.includes('pota') || sKey.includes('argon') || sKey.includes('cüruf') || sKey.includes('sıcaklık');
+        } else if (titleLower.includes('sıcak')) {
+          return sKey.includes('merdane') || sKey.includes('şerit') || sKey.includes('rulman') || sKey.includes('emülsiyon') || sKey.includes('kuvvet');
+        } else if (titleLower.includes('asitleme')) {
+          return sKey.includes('asit') || sKey.includes('tank') || sKey.includes('ph') || sKey.includes('banyo') || sKey.includes('sıyırıcı');
+        } else if (titleLower.includes('soğuk')) {
+          return sKey.includes('gerginlik') || sKey.includes('sac') || sKey.includes('kalınlık') || sKey.includes('x-ray') || sKey.includes('yağlama');
+        }
+
+        return sKey.includes(titleLower);
+      });
+    }
+
+    // Filtrelenen sensör varsa gösterir, yoksa güvenlik amacıyla tüm sensörleri listeler
+    this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
   }
 }
