@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DefectService } from '../../core/services/defect'; // Path'i kendi proje yapınıza göre kontrol edin
+import { DefectService } from '../../core/services/defect';
 import { AnalysisResponseDto } from '../../core/models/defect.model';
 
 type StageStatus = 'OK' | 'BEKLEMEDE' | 'ANOMALİ';
@@ -19,7 +19,7 @@ interface SensorCard {
   unit: string;
   delta: string;
   state: string;
-  stageName?: string; // Sensörün hangi aşamaya ait olduğunu belirtir
+  stageName?: string;
   spark: 'amber' | 'cyan' | 'violet' | 'teal';
 }
 
@@ -43,10 +43,9 @@ export class DefectTrackerComponent {
   isLoading: boolean = false;
   errorMessage: string = '';
 
-  // Filtreleme için durum takibi
   selectedStageName: string | null = null;
-  allSensors: SensorCard[] = [];      // Backend'den gelen tüm sensörler (16 adet)
-  filteredSensors: SensorCard[] = []; // Ekranda listelenen filtrelenmiş sensörler
+  allSensors: SensorCard[] = [];
+  filteredSensors: SensorCard[] = [];
 
   stages: StageCard[] = [
     { title: 'Çelikhane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' },
@@ -55,8 +54,14 @@ export class DefectTrackerComponent {
     { title: 'Soğuk Haddehane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' }
   ];
 
-  indicators: string[] = [];
   rootCauses: ResultRow[] = [];
+  indicators: string[] = [];
+
+  rootCauseEquipment: string = '';
+  productionImpact: number = 0;
+  logisticImpact: number = 0;
+  evidenceList: string[] = [];
+  recommendedAction: string = '';
 
   constructor(private defectService: DefectService) {}
 
@@ -68,12 +73,10 @@ export class DefectTrackerComponent {
 
     this.isLoading = true;
     this.errorMessage = '';
-    this.selectedStageName = null; // Analiz her başladığında filtreyi sıfırla
+    this.selectedStageName = null;
 
     this.defectService.getAnalysis(this.batchId.trim()).subscribe({
       next: (data: AnalysisResponseDto) => {
-        console.log('Backend Response:', data);
-
         if (!data) {
           this.errorMessage = 'Bobin bulundu ancak analiz verisi boş geldi.';
           this.isLoading = false;
@@ -82,7 +85,7 @@ export class DefectTrackerComponent {
 
         this.defectType = data.defectCode || this.defectType;
 
-        // 1. Üretim Hattı Aşamaları Güncelleme
+        // 1. Aşamalar
         if (data.stages && data.stages.length > 0) {
           this.stages = data.stages.map(s => ({
             title: s.stageName,
@@ -92,7 +95,7 @@ export class DefectTrackerComponent {
           }));
         }
 
-        // 2. Kök Neden ve Aksiyon Güncelleme
+        // 2. Kök Neden
         if (data.rootCause) {
           this.rootCauses = [
             { label: 'Equipment / Cihaz', value: data.rootCause.equipment || '-' },
@@ -106,9 +109,21 @@ export class DefectTrackerComponent {
             data.rootCause.detectionDetail || 'Tespit detayı bulunamadı.',
             `Tavsiye Edilen Aksiyon: ${data.rootCause.recommendedAction || 'Aksiyon yok.'}`
           ];
+
+          this.rootCauseEquipment = `${data.rootCause.equipment || ''} / ${data.rootCause.faultSource || ''}`;
+          this.productionImpact = data.rootCause.productionImpactPct || 0;
+          this.logisticImpact = data.rootCause.logisticImpactPct || 0;
+          this.recommendedAction = data.rootCause.recommendedAction || '';
+
+          this.evidenceList = [
+            data.rootCause.detectionDetail || 'Sensör verilerinde sapma tespit edildi.',
+            'Sapma süresi ve büyüklüğü kusur oluşumu için yeterli eşiği aştı',
+            'Kusur morfolojisi proses kaynaklı dağılımla örtüşüyor',
+            'Aynı vardiyada üretilen diğer bobinlerde benzer iz tespit edildi'
+          ];
         }
 
-        // 3. Sensör Kartları Güncelleme ve Hafızaya Alma
+        // 3. Sensörler
         if (data.sensorSummaries && data.sensorSummaries.length > 0) {
           const colors: ('amber' | 'cyan' | 'violet' | 'teal')[] = ['amber', 'cyan', 'violet', 'teal'];
 
@@ -118,16 +133,26 @@ export class DefectTrackerComponent {
             unit: 'değer',
             delta: `${s.percentageDeviation && s.percentageDeviation > 0 ? '+' : ''}${s.percentageDeviation || 0}%`,
             state: s.status === 'ANOMALI' ? 'Anormal' : 'Normal',
-            stageName: (s as any).stageName, // (s as any) ile TypeScript tip hatası engellendi
+            stageName: (s as any).stageName,
             spark: colors[index % colors.length]
           }));
 
-          // İlk analiz açılışında tüm sensörleri yükle
-          this.filteredSensors = [...this.allSensors];
-        }
+          this.isAnalyzed = true;
+          this.isLoading = false;
 
-        this.isAnalyzed = true;
-        this.isLoading = false;
+          // Sadece ANOMALİ tespit edilen aşamayı otomatik seç
+          const anomaliStage = this.stages.find(s => s.status === 'ANOMALİ');
+          if (anomaliStage) {
+            this.selectStage(anomaliStage.title);
+          } else if (this.stages.length > 0) {
+            this.selectStage(this.stages[0].title);
+          } else {
+            this.filteredSensors = [...this.allSensors];
+          }
+        } else {
+          this.isAnalyzed = true;
+          this.isLoading = false;
+        }
       },
       error: (err) => {
         console.error('API Hatası:', err);
@@ -138,25 +163,15 @@ export class DefectTrackerComponent {
     });
   }
 
-  // AŞAMA KARTLARINA TIKLANDIĞINDA SENSÖRLERİ AKILLI FİLTRELEYEN METOD
   selectStage(stageTitle: string): void {
-    if (!this.isAnalyzed) return; // Analiz yapılmadıysa tıklamayı pasif tut
-
-    // Aynı aşamaya tekrar tıklandığında filtreyi kaldırır (Tüm sensörleri gösterir)
-    if (this.selectedStageName === stageTitle) {
-      this.selectedStageName = null;
-      this.filteredSensors = [...this.allSensors];
-      return;
-    }
+    if (!this.isAnalyzed) return;
 
     this.selectedStageName = stageTitle;
 
-    // 1. Yaklaşım: Doğrudan stageName eşleşmesi kontrol edilir
     let matches = this.allSensors.filter(sensor =>
       sensor.stageName && sensor.stageName.toLowerCase().trim() === stageTitle.toLowerCase().trim()
     );
 
-    // 2. Yaklaşım: Eğer DTO'dan stageName boş geldiyse, sensör başlığındaki anahtar kelimelere göre filtrele
     if (matches.length === 0) {
       const titleLower = stageTitle.toLowerCase();
 
@@ -177,7 +192,6 @@ export class DefectTrackerComponent {
       });
     }
 
-    // Filtrelenen sensör varsa gösterir, yoksa güvenlik amacıyla tüm sensörleri listeler
     this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
   }
 }

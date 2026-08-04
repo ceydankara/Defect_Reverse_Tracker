@@ -131,7 +131,10 @@ public class AnalysisService {
         List<AnalysisResponseDto.SensorSummaryDto> summaries = latestReadingsMap.values().stream().map(r -> {
             AnalysisResponseDto.SensorSummaryDto summary = new AnalysisResponseDto.SensorSummaryDto();
             summary.setSensorKey(r.getSensorKey());
-            summary.setStageName(r.getStageName());
+
+            // Güvenli Null Kontrolü
+            summary.setStageName(r.getStageName() != null ? r.getStageName() : "");
+
             summary.setLastActualValue(r.getActualValue());
             summary.setTargetValue(r.getTargetValue());
             summary.setMinLimit(r.getMinLimit());
