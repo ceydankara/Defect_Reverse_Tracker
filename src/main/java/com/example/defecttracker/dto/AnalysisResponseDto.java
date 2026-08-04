@@ -38,6 +38,7 @@ public class AnalysisResponseDto {
         private String sensorKey;
         private BigDecimal lastActualValue;
         private BigDecimal targetValue;
+        private String stageName;
         private BigDecimal minLimit;
         private BigDecimal maxLimit;
         private String status;

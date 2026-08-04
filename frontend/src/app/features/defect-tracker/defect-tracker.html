@@ -41,14 +41,22 @@
     </div>
   </div>
 
-  <!-- 2. ÜRETİM HATTI AŞAMALARI (İLK AÇILIŞTA BEKLEMEDE, BUTONA BASILINCA OK/ANOMALİ) -->
+  <!-- 2. ÜRETİM HATTI AŞAMALARI (TIKLANABİLİR HALE GETİRİLDİ) -->
   <div class="panel-box">
-    <div class="panel-title">ÜRETİM HATTI</div>
+    <div class="panel-title">
+      ÜRETİM HATTI
+      <small *ngIf="selectedStageName" style="color: #00b4d8; font-size: 0.8rem; margin-left: 10px; font-weight: normal;">
+        (Seçili Aşama: {{ selectedStageName }} — Filtrelendi)
+      </small>
+    </div>
 
     <div class="stages-row">
+      <!-- (click) VE [class.active-stage] EKLENDİ -->
       <div *ngFor="let stage of stages"
            class="stage-card"
-           [class.card-anomali]="stage.status === 'ANOMALİ'">
+           [class.card-anomali]="stage.status === 'ANOMALİ'"
+           [class.active-stage]="selectedStageName === stage.title"
+           (click)="selectStage(stage.title)">
         <div class="stage-name">{{ stage.title }}</div>
         <span class="badge"
               [class.badge-waiting]="stage.status === 'BEKLEMEDE'"
@@ -60,12 +68,12 @@
     </div>
   </div>
 
-  <!-- HATA MESAJI (EĞER BATTİN BİLGİSİ BULUNAMAZSA) -->
+  <!-- HATA MESAJI -->
   <div *ngIf="errorMessage" class="error-alert">
     {{ errorMessage }}
   </div>
 
-  <!-- 3. ALT DETAY PANELLERİ (SADECE ANALİZ BUTONUNA BASILDIĞINDA AÇILIR) -->
+  <!-- 3. ALT DETAY PANELLERİ -->
   <div *ngIf="isAnalyzed" class="analysis-details-fade-in">
 
     <!-- KÖK NEDEN VE HASAR KAYNAĞI -->
@@ -87,11 +95,13 @@
       </div>
     </div>
 
-    <!-- SENSÖR ÖZET KARTLARI -->
-    <div class="panel-box" *ngIf="sensors.length > 0">
-      <div class="panel-title">TÜM AŞAMA SENSÖRLERİ — ÖZET</div>
+    <!-- SENSÖR ÖZET KARTLARI (filteredSensors İLE GÜNCELLENDİ) -->
+    <div class="panel-box" *ngIf="filteredSensors.length > 0">
+      <div class="panel-title">
+        SENSÖR DEĞERLERİ {{ selectedStageName ? '— ' + selectedStageName.toUpperCase() : '— TÜM AŞAMALAR' }}
+      </div>
       <div class="sensor-grid">
-        <div *ngFor="let sensor of sensors"
+        <div *ngFor="let sensor of filteredSensors"
              class="sensor-card"
              [class.sensor-anomali]="sensor.state === 'Anormal'">
           <div class="sensor-header">

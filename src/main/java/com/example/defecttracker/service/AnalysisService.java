@@ -1,8 +1,7 @@
 package com.example.defecttracker.service;
 
 import com.example.defecttracker.dto.AnalysisResponseDto;
-import com.example.defecttracker.entity
-        .Coil;
+import com.example.defecttracker.entity.Coil;
 import com.example.defecttracker.entity.Defect;
 import com.example.defecttracker.entity.ProcessStage;
 import com.example.defecttracker.entity.RootCauseResult;
@@ -36,7 +35,7 @@ public class AnalysisService {
         response.setCoilId(coilId);
 
         // 1. Kusur Bilgisi
-        List<Defect> defects = defectRepository.findByCoil_CoilId(coilId);
+        List<Defect> defects = defectRepository.findByCoilId(coilId);
         if (!defects.isEmpty()) {
             response.setDefectCode(defects.get(0).getDefectCode());
         }
@@ -132,6 +131,7 @@ public class AnalysisService {
         List<AnalysisResponseDto.SensorSummaryDto> summaries = latestReadingsMap.values().stream().map(r -> {
             AnalysisResponseDto.SensorSummaryDto summary = new AnalysisResponseDto.SensorSummaryDto();
             summary.setSensorKey(r.getSensorKey());
+            summary.setStageName(r.getStageName());
             summary.setLastActualValue(r.getActualValue());
             summary.setTargetValue(r.getTargetValue());
             summary.setMinLimit(r.getMinLimit());
