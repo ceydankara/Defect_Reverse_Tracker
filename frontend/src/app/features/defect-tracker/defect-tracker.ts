@@ -28,6 +28,17 @@ interface ResultRow {
   value: string;
 }
 
+interface ThresholdSensor {
+  name: string;
+  unit: string;
+  target: number;
+  criticalMin: number;
+  criticalMax: number;
+  warningMin: number;
+  warningMax: number;
+  stage: string;
+}
+
 @Component({
   selector: 'app-defect-tracker',
   standalone: true,
@@ -54,16 +65,21 @@ export class DefectTrackerComponent {
     { title: 'Soğuk Haddehane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' }
   ];
 
-  // Eski tasarım ile geriye dönük uyumluluk
+  // Geriye dönük uyumluluk alanları
   rootCauses: ResultRow[] = [];
   indicators: string[] = [];
 
-  // Yeni Tasarım için Dinamik Değişkenler
+  // Dinamik Kök Neden Değişkenleri
   rootCauseEquipment: string = '';
   productionImpact: number = 0;
   logisticImpact: number = 0;
   evidenceList: string[] = [];
   recommendedAction: string = '';
+
+  // ALARM EŞİĞİ EDİTÖRÜ MODAL DEĞİŞKENLERİ
+  isThresholdModalOpen: boolean = false;
+  activeThresholdStage: string = 'Çelikhane';
+  thresholdSensors: ThresholdSensor[] = [];
 
   constructor(private defectService: DefectService) {}
 
@@ -101,28 +117,22 @@ export class DefectTrackerComponent {
         if (data.rootCause) {
           const prodRaw = data.rootCause.productionImpactPct || 0;
           const logRaw = data.rootCause.logisticImpactPct || 0;
-
-          // Eğer ikisinin toplamı 100 yapmıyorsa, otomatik %100'e oranla (Normalizasyon)
           const total = prodRaw + logRaw;
 
           if (total > 0) {
-            // Bobin değiştikçe gelen oranlara göre %100 üzerinden tam dinamik hesaplar
             this.productionImpact = Math.round((prodRaw / total) * 100);
-            this.logisticImpact = 100 - this.productionImpact; // Kalanı otomatik lojistiğe yazar (%88 -> %92, %8 -> %8)
+            this.logisticImpact = 100 - this.productionImpact;
           } else {
-            // Varsayılan tam üretim kaynaklı kabul et
             this.productionImpact = 100;
             this.logisticImpact = 0;
           }
 
-          // Aşamayı ve Cihazı Dinamik Al
           const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
           const equipmentName = data.rootCause.equipment || 'Ekipman';
 
           this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
           this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin ve kök neden düzeltici aksiyon formunu (CAPA) açın.';
 
-          // Dinamik Kanıt Göstergeleri
           this.evidenceList = [
             data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında sapma tespit edildi.`,
             `Üretim Etkisi Oranı: %${this.productionImpact} | Lojistik Etkisi Oranı: %${this.logisticImpact}`,
@@ -149,7 +159,6 @@ export class DefectTrackerComponent {
           this.isAnalyzed = true;
           this.isLoading = false;
 
-          // Sadece ANOMALİ tespit edilen aşamayı otomatik seç
           const anomaliStage = this.stages.find(s => s.status === 'ANOMALİ');
           if (anomaliStage) {
             this.selectStage(anomaliStage.title);
@@ -202,5 +211,95 @@ export class DefectTrackerComponent {
     }
 
     this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
+  }
+
+  // --- ALARM EŞİĞİ EDİTÖRÜ MODAL METOTLARI ---
+
+  openThresholdModal(): void {
+    if (this.allSensors && this.allSensors.length > 0) {
+      this.thresholdSensors = this.allSensors.map(sensor => {
+        const val = parseFloat(sensor.value) || 100;
+        return {
+          name: sensor.title,
+          unit: sensor.unit || 'birim',
+          target: val,
+          criticalMin: Math.round(val * 0.85 * 10) / 10,
+          criticalMax: Math.round(val * 1.15 * 10) / 10,
+          warningMin: Math.round(val * 0.92 * 10) / 10,
+          warningMax: Math.round(val * 1.08 * 10) / 10,
+          stage: this.detectStageBySensorName(sensor.title, sensor.stageName)
+        };
+      });
+    } else {
+      this.initDefault16Sensors();
+    }
+
+    this.isThresholdModalOpen = true;
+  }
+
+  closeThresholdModal(): void {
+    this.isThresholdModalOpen = false;
+  }
+
+  saveThresholds(): void {
+    console.log('Güncellenmiş 16 Sensör Eşik Değerleri:', this.thresholdSensors);
+    alert('Bütün sensörlerin alarm eşikleri başarıyla kaydedildi!');
+    this.closeThresholdModal();
+  }
+
+  resetThresholds(): void {
+    this.initDefault16Sensors();
+    alert('Tüm sensör eşikleri varsayılana sıfırlandı.');
+  }
+
+  get filteredThresholdSensors(): ThresholdSensor[] {
+    return this.thresholdSensors.filter(s =>
+      s.stage.toLowerCase().trim() === this.activeThresholdStage.toLowerCase().trim()
+    );
+  }
+
+  private detectStageBySensorName(title: string, stageName?: string): string {
+    if (stageName) return stageName;
+    const s = title.toLowerCase();
+    if (s.includes('fırın') || s.includes('pota') || s.includes('argon') || s.includes('cüruf')) return 'Çelikhane';
+    if (s.includes('merdane') || s.includes('şerit') || s.includes('rulman') || s.includes('emülsiyon')) return 'Sıcak Haddehane';
+    if (s.includes('asit') || s.includes('tank') || s.includes('ph') || s.includes('banyo')) return 'Asitleme';
+    return 'Soğuk Haddehane';
+  }
+
+  private initDefault16Sensors(): void {
+    const defaultList = [
+      // Çelikhane (4 Sensör)
+      { name: 'Fırın Sıcaklığı', stage: 'Çelikhane', target: 1150, unit: '°C' },
+      { name: 'Pota Sıcaklığı', stage: 'Çelikhane', target: 1580, unit: '°C' },
+      { name: 'Argon Akış Debisi', stage: 'Çelikhane', target: 450, unit: 'L/dk' },
+      { name: 'Cüruf Kalınlığı', stage: 'Çelikhane', target: 12, unit: 'mm' },
+
+      // Sıcak Haddehane (4 Sensör)
+      { name: 'Hadde Merdane Sıcaklığı', stage: 'Sıcak Haddehane', target: 880, unit: '°C' },
+      { name: 'Şerit Çıkış Hızı', stage: 'Sıcak Haddehane', target: 15, unit: 'm/s' },
+      { name: 'Rulman Titreşimi', stage: 'Sıcak Haddehane', target: 2.4, unit: 'mm/s' },
+      { name: 'Emülsiyon Basıncı', stage: 'Sıcak Haddehane', target: 6.5, unit: 'bar' },
+
+      // Asitleme (4 Sensör)
+      { name: 'Asit Banyo Sıcaklığı', stage: 'Asitleme', target: 85, unit: '°C' },
+      { name: 'Asit Konsantrasyonu (HCl)', stage: 'Asitleme', target: 18, unit: '%' },
+      { name: 'Tank pH Seviyesi', stage: 'Asitleme', target: 1.2, unit: 'pH' },
+      { name: 'Sıyırıcı Rulo Basıncı', stage: 'Asitleme', target: 4.2, unit: 'bar' },
+
+      // Soğuk Haddehane (4 Sensör)
+      { name: 'Şerit Gerginliği', stage: 'Soğuk Haddehane', target: 125, unit: 'kN' },
+      { name: 'Sac Çıkış Kalınlığı', stage: 'Soğuk Haddehane', target: 1.5, unit: 'mm' },
+      { name: 'X-Ray Kalınlık Sapması', stage: 'Soğuk Haddehane', target: 0.02, unit: 'mm' },
+      { name: 'Yağlama Debisi', stage: 'Soğuk Haddehane', target: 18.5, unit: 'L/dk' }
+    ];
+
+    this.thresholdSensors = defaultList.map(s => ({
+      ...s,
+      criticalMin: Math.round(s.target * 0.85 * 10) / 10,
+      criticalMax: Math.round(s.target * 1.15 * 10) / 10,
+      warningMin: Math.round(s.target * 0.92 * 10) / 10,
+      warningMax: Math.round(s.target * 1.08 * 10) / 10
+    }));
   }
 }
