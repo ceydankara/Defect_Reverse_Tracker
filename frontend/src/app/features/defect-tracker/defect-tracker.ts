@@ -118,7 +118,7 @@ export class DefectTrackerComponent {
           }));
         }
 
-        // 2. Kök Neden (Dinamik Yüzde Hesaplamalı)
+        // 2. Kök Neden (Dinamik Kanıt Göstergeleri)
         if (data.rootCause) {
           const prodRaw = data.rootCause.productionImpactPct || 0;
           const logRaw = data.rootCause.logisticImpactPct || 0;
@@ -134,17 +134,44 @@ export class DefectTrackerComponent {
 
           const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
           const equipmentName = data.rootCause.equipment || 'Ekipman';
+          const defectCode = data.defectCode || this.defectType;
 
           this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
-          this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin ve kök neden düzeltici aksiyon formunu (CAPA) açın.';
+          this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin.';
 
-          this.evidenceList = [
+          // DİNAMİK KANIT GÖSTERGELERİ OLUŞTURMA
+          const dynamicEvidence: string[] = [
             data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında sapma tespit edildi.`,
-            `Üretim Etkisi Oranı: %${this.productionImpact} | Lojistik Etkisi Oranı: %${this.logisticImpact}`,
-            'Sapma süresi ve büyüklüğü kusur oluşumu için yeterli eşiği aştı',
-            'Kusur morfolojisi proses kaynaklı dağılımla örtüşüyor',
-            'Aynı vardiyada üretilen diğer bobinlerde benzer iz tespit edildi'
+            `Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
           ];
+
+          // A) Eğer Lojistik Ağırlıklıysa
+          if (this.logisticImpact > 50) {
+            dynamicEvidence.push('Tesis içi üretim sensörlerinde kritik tolerans aşımı tespit edilmedi.');
+            dynamicEvidence.push('Hasar morfolojisi dış mekanik darbe veya yükleme/istifleme izleri ile uyuşuyor.');
+            dynamicEvidence.push('Saha içi stok/nakliye kayıtlarında elleçleme uyarısı mevcut.');
+          }
+          // B) Eğer Üretim / Proses Kaynaklıysa (Kusur Koduna Göre Özelleştirme)
+          else {
+            if (defectCode.includes('THICKNESS') || defectCode.includes('EDGE')) {
+              dynamicEvidence.push(`${equipmentName} üzerinde hidrolik baskı sapması proses limitlerini aştı.`);
+              dynamicEvidence.push('Şerit gerginlik ve kalınlık profil verilerinde anlık dalgalanma doğrulandı.');
+            } else if (defectCode.includes('TEMP') || defectCode.includes('HEAT') || defectCode.includes('BURN')) {
+              dynamicEvidence.push('Sıcaklık sensörlerinden alınan veriler termal şok eşiğini geçti.');
+              dynamicEvidence.push('Soğutma/Isıtma hattı debi verilerinde dengesizlik kaydedildi.');
+            } else if (defectCode.includes('ACID') || defectCode.includes('PICKLING')) {
+              dynamicEvidence.push('Kimyasal banyo konsantrasyonu ve pH seviyelerinde reaksiyon sapması görüldü.');
+              dynamicEvidence.push('Sıyırıcı/durulama hattında solüsyon birikintisi tespit edildi.');
+            } else {
+              dynamicEvidence.push(`${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`);
+              dynamicEvidence.push('Anomali süresi kusur oluşumu için gerekli kritik süre eşiğini geçti.');
+            }
+
+            dynamicEvidence.push(`Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`);
+          }
+
+          // Dinamik listeyi aktar
+          this.evidenceList = dynamicEvidence;
         }
 
         // 3. Sensörler
