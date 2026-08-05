@@ -41,7 +41,7 @@
     </div>
   </div>
 
-  <!-- 2. ÜRETİM HATTI AŞAMALARI (TIKLANABİLİR HALE GETİRİLDİ) -->
+  <!-- 2. ÜRETİM HATTI AŞAMALARI (TIKLANABİLİR VE DİNAMİK RENKLİ HALE GETİRİLDİ) -->
   <div class="panel-box">
     <div class="panel-title">
       ÜRETİM HATTI
@@ -51,11 +51,12 @@
     </div>
 
     <div class="stages-row">
-      <!-- (click) VE [class.active-stage] EKLENDİ -->
       <div *ngFor="let stage of stages"
            class="stage-card"
            [class.card-anomali]="stage.status === 'ANOMALİ'"
            [class.active-stage]="selectedStageName === stage.title"
+           [class.selected-anomaly]="selectedStageName === stage.title && stage.status === 'ANOMALİ'"
+           [class.selected-normal]="selectedStageName === stage.title && stage.status !== 'ANOMALİ'"
            (click)="selectStage(stage.title)">
         <div class="stage-name">{{ stage.title }}</div>
         <span class="badge"
@@ -76,23 +77,75 @@
   <!-- 3. ALT DETAY PANELLERİ -->
   <div *ngIf="isAnalyzed" class="analysis-details-fade-in">
 
-    <!-- KÖK NEDEN VE HASAR KAYNAĞI -->
-    <div class="panel-box root-cause-card" *ngIf="rootCauses.length > 0">
-      <div class="panel-title">HASAR KAYNAĞI SINIFLANDIRICI</div>
+    <!-- HASAR KAYNAĞI SINIFLANDIRICI (YENİ MODERN TASARIM) -->
+    <div class="panel-box root-cause-card" *ngIf="rootCauseEquipment">
 
-      <div class="results-grid">
-        <div *ngFor="let row of rootCauses" class="result-row">
-          <span class="res-label">{{ row.label }}:</span>
-          <span class="res-value">{{ row.value }}</span>
+      <!-- ÜST İKON VE BAŞLIK SATIRI -->
+      <div class="card-header-row">
+        <div class="header-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="header-titles">
+          <div class="panel-title-sub">HASAR KAYNAĞI SINIFLANDIRICI</div>
+          <div class="panel-title-main">
+            Hasar Kaynağı Tespit Edildi — <span class="highlight-text">{{ rootCauseEquipment }}</span>
+          </div>
         </div>
       </div>
 
-      <div class="indicators-box" *ngIf="indicators.length > 0">
-        <div class="ind-title">KANIT GÖSTERGELERİ & AKSİYON:</div>
-        <ul>
-          <li *ngFor="let ind of indicators">{{ ind }}</li>
+      <!-- YÜZDELİK İLERLEME ÇUBUĞU (PROGRESS BAR) -->
+      <div class="progress-section">
+        <div class="progress-labels">
+          <span>Üretim Kaynaklı</span>
+          <span>Lojistik / Dış Etken</span>
+        </div>
+
+        <!-- Çubuk Toplamda %100 Kaplar -->
+        <div class="progress-bar-container">
+          <div class="progress-fill production" [style.width.%]="productionImpact" [title]="'Üretim: %' + productionImpact"></div>
+          <div class="progress-fill logistics" [style.width.%]="logisticImpact" [title]="'Lojistik: %' + logisticImpact"></div>
+        </div>
+
+        <div class="progress-values">
+          <span class="val-prod">%{{ productionImpact }}</span>
+          <span class="val-log">%{{ logisticImpact }}</span>
+        </div>
+      </div>
+
+      <!-- KANIT GÖSTERGELERİ (YEŞİL İKONLU LİSTE) -->
+      <div class="indicators-section">
+        <div class="ind-header">KANIT GÖSTERGELERİ</div>
+        <ul class="check-list">
+          <li *ngFor="let ind of evidenceList">
+        <span class="check-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#10b981" stroke-width="2" fill="none"/>
+            <path d="M8 12l3 3 5-5" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+            <span>{{ ind }}</span>
+          </li>
         </ul>
       </div>
+
+      <!-- ÖNERİLEN AKSİYON (SARI UYARI KUTUSU) -->
+      <div class="action-alert-box" *ngIf="recommendedAction">
+        <div class="alert-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Önerilen Aksiyon
+        </div>
+        <div class="alert-body">
+          {{ recommendedAction }}
+        </div>
+      </div>
+
     </div>
 
     <!-- SENSÖR ÖZET KARTLARI (filteredSensors İLE GÜNCELLENDİ) -->

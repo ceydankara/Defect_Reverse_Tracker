@@ -54,9 +54,11 @@ export class DefectTrackerComponent {
     { title: 'Soğuk Haddehane', status: 'BEKLEMEDE', value: '4 sensör', delta: '0%' }
   ];
 
+  // Eski tasarım ile geriye dönük uyumluluk
   rootCauses: ResultRow[] = [];
   indicators: string[] = [];
 
+  // Yeni Tasarım için Dinamik Değişkenler
   rootCauseEquipment: string = '';
   productionImpact: number = 0;
   logisticImpact: number = 0;
@@ -95,28 +97,35 @@ export class DefectTrackerComponent {
           }));
         }
 
-        // 2. Kök Neden
+        // 2. Kök Neden (Dinamik Yüzde Hesaplamalı)
         if (data.rootCause) {
-          this.rootCauses = [
-            { label: 'Equipment / Cihaz', value: data.rootCause.equipment || '-' },
-            { label: 'Hata / Arıza Kaynağı', value: data.rootCause.faultSource || '-' },
-            { label: 'Güven Oranı', value: `%${data.rootCause.confidenceRate || 0}` },
-            { label: 'Üretim Etkisi', value: `%${data.rootCause.productionImpactPct || 0}` },
-            { label: 'Lojistik Etkisi', value: `%${data.rootCause.logisticImpactPct || 0}` }
-          ];
+          const prodRaw = data.rootCause.productionImpactPct || 0;
+          const logRaw = data.rootCause.logisticImpactPct || 0;
 
-          this.indicators = [
-            data.rootCause.detectionDetail || 'Tespit detayı bulunamadı.',
-            `Tavsiye Edilen Aksiyon: ${data.rootCause.recommendedAction || 'Aksiyon yok.'}`
-          ];
+          // Eğer ikisinin toplamı 100 yapmıyorsa, otomatik %100'e oranla (Normalizasyon)
+          const total = prodRaw + logRaw;
 
-          this.rootCauseEquipment = `${data.rootCause.equipment || ''} / ${data.rootCause.faultSource || ''}`;
-          this.productionImpact = data.rootCause.productionImpactPct || 0;
-          this.logisticImpact = data.rootCause.logisticImpactPct || 0;
-          this.recommendedAction = data.rootCause.recommendedAction || '';
+          if (total > 0) {
+            // Bobin değiştikçe gelen oranlara göre %100 üzerinden tam dinamik hesaplar
+            this.productionImpact = Math.round((prodRaw / total) * 100);
+            this.logisticImpact = 100 - this.productionImpact; // Kalanı otomatik lojistiğe yazar (%88 -> %92, %8 -> %8)
+          } else {
+            // Varsayılan tam üretim kaynaklı kabul et
+            this.productionImpact = 100;
+            this.logisticImpact = 0;
+          }
 
+          // Aşamayı ve Cihazı Dinamik Al
+          const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
+          const equipmentName = data.rootCause.equipment || 'Ekipman';
+
+          this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
+          this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin ve kök neden düzeltici aksiyon formunu (CAPA) açın.';
+
+          // Dinamik Kanıt Göstergeleri
           this.evidenceList = [
-            data.rootCause.detectionDetail || 'Sensör verilerinde sapma tespit edildi.',
+            data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında sapma tespit edildi.`,
+            `Üretim Etkisi Oranı: %${this.productionImpact} | Lojistik Etkisi Oranı: %${this.logisticImpact}`,
             'Sapma süresi ve büyüklüğü kusur oluşumu için yeterli eşiği aştı',
             'Kusur morfolojisi proses kaynaklı dağılımla örtüşüyor',
             'Aynı vardiyada üretilen diğer bobinlerde benzer iz tespit edildi'

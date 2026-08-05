@@ -216,3 +216,170 @@
   margin-bottom: 20px;
   font-size: 0.9rem;
 }
+/* HASAR KAYNAĞI SINIFLANDIRICI ÖZEL STİLLERİ */
+.root-cause-card {
+  background: #130a16 !important; /* Görseldeki koyu mor zemin */
+  border: 1px solid #29142e !important;
+  border-radius: 12px;
+  padding: 24px;
+
+  .card-header-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+
+    .header-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(236, 72, 153, 0.15);
+      color: #ec4899;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .panel-title-sub {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .panel-title-main {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 4px;
+
+      .highlight-text {
+        color: #f43f5e;
+      }
+    }
+  }
+
+  /* Çift Renkli Progress Bar */
+  .progress-section {
+    margin-bottom: 28px;
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-container {
+      height: 10px;
+      background: #2a1830;
+      border-radius: 8px;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      transition: width 0.5s ease-in-out;
+
+      &.production {
+        background: linear-gradient(90deg, #f43f5e, #ec4899);
+      }
+      &.logistics {
+        background: linear-gradient(90deg, #8b5cf6, #a855f7);
+      }
+    }
+
+    .progress-values {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 6px;
+
+      .val-prod { color: #f43f5e; }
+      .val-log { color: #a855f7; }
+    }
+  }
+
+  /* Kanıt Göstergeleri */
+  .indicators-section {
+    margin-bottom: 24px;
+
+    .ind-header {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      margin-bottom: 12px;
+    }
+
+    .check-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #e5e7eb;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+
+        .check-icon {
+          display: flex;
+          align-items: center;
+        }
+      }
+    }
+  }
+
+  /* Sarı Aksiyon Kutusu */
+  .action-alert-box {
+    background: rgba(245, 158, 11, 0.05);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+
+    .alert-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #f59e0b;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .alert-body {
+      color: #d1d5db;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      padding-left: 28px;
+    }
+  }
+}
+.stage-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #1f2937; // Varsayılan pasif kenarlık
+
+  // Tıklanan ve Anomali Olan Aşama -> Kırmızı Parlama & Çerçeve
+  &.selected-anomaly {
+    border-color: #f43f5e !important;
+    background: rgba(244, 63, 94, 0.1) !important;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+    transform: translateY(-2px);
+  }
+
+  // Tıklanan ve Normal (OK / Beklemede) Olan Aşama -> Mavi Parlama & Çerçeve
+  &.selected-normal {
+    border-color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+  }
+}
