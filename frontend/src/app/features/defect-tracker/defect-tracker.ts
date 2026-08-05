@@ -19,6 +19,7 @@ interface SensorCard {
   unit: string;
   delta: string;
   state: string;
+  originalState: string; // Backend'den gelen orijinal durum (Anormal/Normal)
   stageName?: string;
   spark: 'amber' | 'cyan' | 'violet' | 'teal';
 }
@@ -29,6 +30,7 @@ interface ResultRow {
 }
 
 interface ThresholdSensor {
+  id: string;
   name: string;
   unit: string;
   target: number;
@@ -37,6 +39,7 @@ interface ThresholdSensor {
   warningMin: number;
   warningMax: number;
   stage: string;
+  isUserModified?: boolean; // Kullanıcı bu sensörün eşiğini değiştirdi mi?
 }
 
 @Component({
@@ -80,6 +83,7 @@ export class DefectTrackerComponent {
   isThresholdModalOpen: boolean = false;
   activeThresholdStage: string = 'Çelikhane';
   thresholdSensors: ThresholdSensor[] = [];
+  savedThresholds: ThresholdSensor[] = [];
 
   constructor(private defectService: DefectService) {}
 
@@ -92,6 +96,7 @@ export class DefectTrackerComponent {
     this.isLoading = true;
     this.errorMessage = '';
     this.selectedStageName = null;
+    this.savedThresholds = []; // Yeni analizde kayıtlı eşikleri sıfırla
 
     this.defectService.getAnalysis(this.batchId.trim()).subscribe({
       next: (data: AnalysisResponseDto) => {
@@ -146,15 +151,19 @@ export class DefectTrackerComponent {
         if (data.sensorSummaries && data.sensorSummaries.length > 0) {
           const colors: ('amber' | 'cyan' | 'violet' | 'teal')[] = ['amber', 'cyan', 'violet', 'teal'];
 
-          this.allSensors = data.sensorSummaries.map((s, index) => ({
-            title: s.sensorKey,
-            value: s.lastActualValue !== undefined && s.lastActualValue !== null ? s.lastActualValue.toString() : '0',
-            unit: 'değer',
-            delta: `${s.percentageDeviation && s.percentageDeviation > 0 ? '+' : ''}${s.percentageDeviation || 0}%`,
-            state: s.status === 'ANOMALI' ? 'Anormal' : 'Normal',
-            stageName: (s as any).stageName,
-            spark: colors[index % colors.length]
-          }));
+          this.allSensors = data.sensorSummaries.map((s, index) => {
+            const isAnomali = s.status === 'ANOMALI';
+            return {
+              title: s.sensorKey,
+              value: s.lastActualValue !== undefined && s.lastActualValue !== null ? s.lastActualValue.toString() : '0',
+              unit: 'değer',
+              delta: `${s.percentageDeviation && s.percentageDeviation > 0 ? '+' : ''}${s.percentageDeviation || 0}%`,
+              state: isAnomali ? 'Anormal' : 'Normal',
+              originalState: isAnomali ? 'Anormal' : 'Normal', // BACKEND GELEN ORİJİNAL DURUM
+              stageName: (s as any).stageName,
+              spark: colors[index % colors.length]
+            };
+          });
 
           this.isAnalyzed = true;
           this.isLoading = false;
@@ -213,21 +222,25 @@ export class DefectTrackerComponent {
     this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
   }
 
-  // --- ALARM EŞİĞİ EDİTÖRÜ MODAL METOTLARI ---
+  // --- ALARM EŞİĞİ EDİTÖRÜ MANTIĞI ---
 
   openThresholdModal(): void {
-    if (this.allSensors && this.allSensors.length > 0) {
+    if (this.savedThresholds && this.savedThresholds.length > 0) {
+      this.thresholdSensors = JSON.parse(JSON.stringify(this.savedThresholds));
+    } else if (this.allSensors && this.allSensors.length > 0) {
       this.thresholdSensors = this.allSensors.map(sensor => {
         const val = parseFloat(sensor.value) || 100;
         return {
+          id: sensor.title,
           name: sensor.title,
-          unit: sensor.unit || 'birim',
+          unit: sensor.unit || 'değer',
           target: val,
           criticalMin: Math.round(val * 0.85 * 10) / 10,
           criticalMax: Math.round(val * 1.15 * 10) / 10,
           warningMin: Math.round(val * 0.92 * 10) / 10,
           warningMax: Math.round(val * 1.08 * 10) / 10,
-          stage: this.detectStageBySensorName(sensor.title, sensor.stageName)
+          stage: this.detectStageBySensorName(sensor.title, sensor.stageName),
+          isUserModified: false
         };
       });
     } else {
@@ -242,14 +255,82 @@ export class DefectTrackerComponent {
   }
 
   saveThresholds(): void {
-    console.log('Güncellenmiş 16 Sensör Eşik Değerleri:', this.thresholdSensors);
-    alert('Bütün sensörlerin alarm eşikleri başarıyla kaydedildi!');
+    // 1. İlk kayıt ile karşılaştırıp sadece kullanıcının GERÇEKTEN değiştirdiği sensörleri işaretle
+    if (this.allSensors && this.allSensors.length > 0) {
+      this.thresholdSensors.forEach(t => {
+        const originalSensor = this.allSensors.find(s => s.title === t.id || s.title === t.name);
+        if (originalSensor) {
+          const defaultVal = parseFloat(originalSensor.value) || 100;
+          const defaultCritMin = Math.round(defaultVal * 0.85 * 10) / 10;
+          const defaultCritMax = Math.round(defaultVal * 1.15 * 10) / 10;
+
+          // Kullanıcı varsayılan otomatik hesaplanan değerlerin dışına çıktıysa değiştirildi kabul et
+          if (t.criticalMin !== defaultCritMin || t.criticalMax !== defaultCritMax) {
+            t.isUserModified = true;
+          }
+        }
+      });
+    }
+
+    this.savedThresholds = JSON.parse(JSON.stringify(this.thresholdSensors));
+    this.reevaluateSensorsAndStagesWithThresholds();
+
+    alert('Alarm eşikleri kaydedildi!');
     this.closeThresholdModal();
   }
 
   resetThresholds(): void {
-    this.initDefault16Sensors();
-    alert('Tüm sensör eşikleri varsayılana sıfırlandı.');
+    this.savedThresholds = [];
+    if (this.allSensors && this.allSensors.length > 0) {
+      this.allSensors.forEach(s => s.state = s.originalState);
+    }
+    this.openThresholdModal();
+    this.reevaluateSensorsAndStagesWithThresholds();
+    alert('Tüm sensör eşikleri sıfırlandı.');
+  }
+
+  private reevaluateSensorsAndStagesWithThresholds(): void {
+    if (!this.allSensors || this.allSensors.length === 0) return;
+
+    this.allSensors.forEach(sensor => {
+      const val = parseFloat(sensor.value);
+
+      const matchThreshold = this.savedThresholds.find(t =>
+        t.id === sensor.title || t.name === sensor.title
+      );
+
+      // Sadece ve sadece kullanıcının değerini ELİYLE DEĞİŞTİRDİĞİ sensörü yeni limitlerle hesapla
+      if (matchThreshold && matchThreshold.isUserModified && !isNaN(val)) {
+        if (val < matchThreshold.criticalMin || val > matchThreshold.criticalMax) {
+          sensor.state = 'Anormal';
+        } else {
+          sensor.state = 'Normal';
+        }
+      } else {
+        // Dokunulmayan diğer tüm sensörlerde BACKEND'DEN GELEN İLK UYARI DURUMUNU KORU
+        sensor.state = sensor.originalState;
+      }
+    });
+
+    // Aşamaların ANOMALİ durumlarını güncel duruma göre yenile
+    this.stages.forEach(stage => {
+      const stageNameLower = stage.title.toLowerCase().trim();
+
+      const hasAnomaly = this.allSensors.some(s => {
+        const sStage = this.detectStageBySensorName(s.title, s.stageName).toLowerCase().trim();
+        return sStage === stageNameLower && s.state === 'Anormal';
+      });
+
+      stage.status = hasAnomaly ? 'ANOMALİ' : 'OK';
+      stage.delta = hasAnomaly ? 'Anomali Sapması' : 'Nominal';
+    });
+
+    // Filtrelenmiş ekranı tazele
+    if (this.selectedStageName) {
+      this.selectStage(this.selectedStageName);
+    } else {
+      this.filteredSensors = [...this.allSensors];
+    }
   }
 
   get filteredThresholdSensors(): ThresholdSensor[] {
@@ -269,25 +350,18 @@ export class DefectTrackerComponent {
 
   private initDefault16Sensors(): void {
     const defaultList = [
-      // Çelikhane (4 Sensör)
       { name: 'Fırın Sıcaklığı', stage: 'Çelikhane', target: 1150, unit: '°C' },
       { name: 'Pota Sıcaklığı', stage: 'Çelikhane', target: 1580, unit: '°C' },
       { name: 'Argon Akış Debisi', stage: 'Çelikhane', target: 450, unit: 'L/dk' },
       { name: 'Cüruf Kalınlığı', stage: 'Çelikhane', target: 12, unit: 'mm' },
-
-      // Sıcak Haddehane (4 Sensör)
       { name: 'Hadde Merdane Sıcaklığı', stage: 'Sıcak Haddehane', target: 880, unit: '°C' },
       { name: 'Şerit Çıkış Hızı', stage: 'Sıcak Haddehane', target: 15, unit: 'm/s' },
       { name: 'Rulman Titreşimi', stage: 'Sıcak Haddehane', target: 2.4, unit: 'mm/s' },
       { name: 'Emülsiyon Basıncı', stage: 'Sıcak Haddehane', target: 6.5, unit: 'bar' },
-
-      // Asitleme (4 Sensör)
       { name: 'Asit Banyo Sıcaklığı', stage: 'Asitleme', target: 85, unit: '°C' },
       { name: 'Asit Konsantrasyonu (HCl)', stage: 'Asitleme', target: 18, unit: '%' },
       { name: 'Tank pH Seviyesi', stage: 'Asitleme', target: 1.2, unit: 'pH' },
       { name: 'Sıyırıcı Rulo Basıncı', stage: 'Asitleme', target: 4.2, unit: 'bar' },
-
-      // Soğuk Haddehane (4 Sensör)
       { name: 'Şerit Gerginliği', stage: 'Soğuk Haddehane', target: 125, unit: 'kN' },
       { name: 'Sac Çıkış Kalınlığı', stage: 'Soğuk Haddehane', target: 1.5, unit: 'mm' },
       { name: 'X-Ray Kalınlık Sapması', stage: 'Soğuk Haddehane', target: 0.02, unit: 'mm' },
@@ -295,11 +369,13 @@ export class DefectTrackerComponent {
     ];
 
     this.thresholdSensors = defaultList.map(s => ({
+      id: s.name,
       ...s,
       criticalMin: Math.round(s.target * 0.85 * 10) / 10,
       criticalMax: Math.round(s.target * 1.15 * 10) / 10,
       warningMin: Math.round(s.target * 0.92 * 10) / 10,
-      warningMax: Math.round(s.target * 1.08 * 10) / 10
+      warningMax: Math.round(s.target * 1.08 * 10) / 10,
+      isUserModified: false
     }));
   }
 }
