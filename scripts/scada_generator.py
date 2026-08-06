@@ -6,7 +6,7 @@ import psycopg2  # MySQL için: import mysql.connector as psycopg2
 DB_CONFIG = {
     "dbname": "Defect Reverse-Tracker",
     "user": "postgres",
-    "password": "filCeyda10?",
+    "password": "***",
     "host": "localhost",
     "port": "5432"
 }
