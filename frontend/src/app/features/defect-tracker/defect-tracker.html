@@ -154,6 +154,27 @@
 
     </div>
 
+    <!-- DİNAMİK GRAFİK PANELİ -->
+    <div class="panel-box chart-container-card" *ngIf="filteredSensors.length > 0">
+      <div class="chart-header">
+        <div class="chart-title-group">
+          <h3>{{ selectedSensorTitle || 'Sensör Değişim Grafiği' }}</h3>
+          <span>{{ selectedSensorStage }} · 0 → 180 sn</span>
+        </div>
+
+        <div class="chart-legend">
+          <span class="legend-item"><i class="dot gercek"></i> Gerçek</span>
+          <span class="legend-item"><i class="dot hedef"></i> Hedef</span>
+          <span class="legend-item"><i class="dot uyari"></i> Uyarı</span>
+          <span class="legend-item"><i class="dot kritik"></i> Kritik</span>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper">
+        <canvas #sensorChartCanvas></canvas>
+      </div>
+    </div>
+
     <!-- SENSÖR ÖZET KARTLARI -->
     <div class="panel-box" *ngIf="filteredSensors.length > 0">
       <div class="panel-title">
@@ -162,7 +183,9 @@
       <div class="sensor-grid">
         <div *ngFor="let sensor of filteredSensors"
              class="sensor-card"
-             [class.sensor-anomali]="sensor.state === 'Anormal'">
+             [class.active-card]="sensor.title === selectedSensorTitle"
+             [class.sensor-anomali]="sensor.state === 'Anormal'"
+             (click)="onSelectSensorCard(sensor)">
           <div class="sensor-header">
             <span class="sensor-title">{{ sensor.title }}</span>
             <span class="sensor-delta" [class.text-danger]="sensor.state === 'Anormal'">{{ sensor.delta }}</span>

@@ -1,8 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DefectService } from '../../core/services/defect';
 import { AnalysisResponseDto } from '../../core/models/defect.model';
+import { Chart, registerables } from 'chart.js';
+
+// Chart.js modüllerini yüklüyoruz
+Chart.register(...registerables);
 
 type StageStatus = 'OK' | 'BEKLEMEDE' | 'ANOMALİ';
 
@@ -49,7 +53,9 @@ interface ThresholdSensor {
   templateUrl: './defect-tracker.html',
   styleUrl: './defect-tracker.scss'
 })
-export class DefectTrackerComponent {
+export class DefectTrackerComponent implements AfterViewInit {
+  @ViewChild('sensorChartCanvas') sensorChartCanvas!: ElementRef<HTMLCanvasElement>;
+
   batchId: string = '';
   defectType: string = '';
 
@@ -85,7 +91,19 @@ export class DefectTrackerComponent {
   thresholdSensors: ThresholdSensor[] = [];
   savedThresholds: ThresholdSensor[] = [];
 
+  // GRAFİK DEĞİŞKENLERİ ('line' TİPİ TANIMLI)
+  chart: Chart<'line'> | null = null;
+  selectedSensorTitle: string = '';
+  selectedSensorStage: string = '';
+
   constructor(private defectService: DefectService) {}
+
+  ngAfterViewInit(): void {
+    // Sayfa DOM'u hazır olduğunda çalışır
+    if (this.isAnalyzed && this.filteredSensors.length > 0) {
+      this.initChart();
+    }
+  }
 
   onStartAnalysis(): void {
     if (!this.batchId || this.batchId.trim() === '') {
@@ -203,6 +221,14 @@ export class DefectTrackerComponent {
           } else {
             this.filteredSensors = [...this.allSensors];
           }
+
+          // HTML Canvas'ın DOM'a girmesi için 100ms bekleyip grafiği kuruyoruz
+          if (this.filteredSensors.length > 0) {
+            setTimeout(() => {
+              this.initChart();
+              this.onSelectSensorCard(this.filteredSensors[0]);
+            }, 100);
+          }
         } else {
           this.isAnalyzed = true;
           this.isLoading = false;
@@ -247,6 +273,140 @@ export class DefectTrackerComponent {
     }
 
     this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
+
+    // Aşama seçilince ilk sensörü seçip grafiği güncelle
+    if (this.filteredSensors.length > 0) {
+      setTimeout(() => {
+        if (!this.chart) {
+          this.initChart();
+        }
+        this.onSelectSensorCard(this.filteredSensors[0]);
+      }, 50);
+    }
+  }
+
+  // --- SENSÖR KARTINA TIKLAMA VE DİNAMİK GRAFİK METOTLARI ---
+
+  onSelectSensorCard(sensor: SensorCard): void {
+    this.selectedSensorTitle = sensor.title;
+    this.selectedSensorStage = sensor.stageName || this.selectedStageName || 'Üretim Hattı';
+
+    if (!this.chart) {
+      this.initChart();
+    }
+    this.updateChartData();
+  }
+
+  private initChart(): void {
+    if (!this.sensorChartCanvas) return;
+
+    const ctx = this.sensorChartCanvas.nativeElement.getContext('2d');
+    if (!ctx) return;
+
+    // Eğer önceden çizilmiş chart varsa destroy et
+    if (this.chart) {
+      this.chart.destroy();
+    }
+
+    const labels = Array.from({ length: 19 }, (_, i) => (i * 10).toString());
+
+    this.chart = new Chart<'line'>(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Gerçek Değer',
+            data: [],
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true
+          },
+          {
+            label: 'Hedef Limit',
+            data: [],
+            borderColor: '#38bdf8',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0
+          },
+          {
+            label: 'Uyarı Limiti',
+            data: [],
+            borderColor: '#f59e0b',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0
+          },
+          {
+            label: 'Kritik Limit',
+            data: [],
+            borderColor: '#dc2626',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8' }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8' }
+          }
+        }
+      }
+    });
+  }
+
+  updateChartData(): void {
+    if (!this.chart || !this.selectedSensorTitle) return;
+
+    const activeSensor = this.allSensors.find(s => s.title === this.selectedSensorTitle);
+    const val = activeSensor ? parseFloat(activeSensor.value) : 100;
+
+    const matchThreshold = this.savedThresholds.find(t => t.name === this.selectedSensorTitle || t.id === this.selectedSensorTitle);
+
+    const targetVal = matchThreshold ? matchThreshold.target : val;
+    const warningVal = matchThreshold ? matchThreshold.warningMax : val * 1.08;
+    const criticalVal = matchThreshold ? matchThreshold.criticalMax : val * 1.15;
+
+    const timePoints = 19;
+    const realData: number[] = [];
+
+    // 0-180 sn dinamik dalga simülasyonu
+    for (let i = 0; i < timePoints; i++) {
+      let noise = (Math.sin(i) * 0.02) * val;
+      if (i >= 5 && i <= 12 && activeSensor?.state === 'Anormal') {
+        noise += (val * 0.22);
+      }
+      realData.push(Math.round((val + noise) * 10) / 10);
+    }
+
+    const datasets = this.chart.data.datasets;
+
+    if (datasets && datasets.length >= 4) {
+      datasets[0].data = realData;
+      (datasets[0] as any).borderColor = activeSensor?.state === 'Anormal' ? '#ef4444' : '#10b981';
+      (datasets[0] as any).backgroundColor = activeSensor?.state === 'Anormal' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+
+      datasets[1].data = Array(timePoints).fill(targetVal);
+      datasets[2].data = Array(timePoints).fill(warningVal);
+      datasets[3].data = Array(timePoints).fill(criticalVal);
+    }
+
+    this.chart.update();
   }
 
   // --- ALARM EŞİĞİ EDİTÖRÜ MANTIĞI ---
@@ -282,7 +442,6 @@ export class DefectTrackerComponent {
   }
 
   saveThresholds(): void {
-    // 1. İlk kayıt ile karşılaştırıp sadece kullanıcının GERÇEKTEN değiştirdiği sensörleri işaretle
     if (this.allSensors && this.allSensors.length > 0) {
       this.thresholdSensors.forEach(t => {
         const originalSensor = this.allSensors.find(s => s.title === t.id || s.title === t.name);
@@ -291,7 +450,6 @@ export class DefectTrackerComponent {
           const defaultCritMin = Math.round(defaultVal * 0.85 * 10) / 10;
           const defaultCritMax = Math.round(defaultVal * 1.15 * 10) / 10;
 
-          // Kullanıcı varsayılan otomatik hesaplanan değerlerin dışına çıktıysa değiştirildi kabul et
           if (t.criticalMin !== defaultCritMin || t.criticalMax !== defaultCritMax) {
             t.isUserModified = true;
           }
@@ -301,6 +459,9 @@ export class DefectTrackerComponent {
 
     this.savedThresholds = JSON.parse(JSON.stringify(this.thresholdSensors));
     this.reevaluateSensorsAndStagesWithThresholds();
+
+    // Eşikler kaydedildiğinde grafiği yeni limit çizgileriyle güncelle
+    this.updateChartData();
 
     alert('Alarm eşikleri kaydedildi!');
     this.closeThresholdModal();
@@ -313,6 +474,7 @@ export class DefectTrackerComponent {
     }
     this.openThresholdModal();
     this.reevaluateSensorsAndStagesWithThresholds();
+    this.updateChartData();
     alert('Tüm sensör eşikleri sıfırlandı.');
   }
 
@@ -326,7 +488,6 @@ export class DefectTrackerComponent {
         t.id === sensor.title || t.name === sensor.title
       );
 
-      // Sadece ve sadece kullanıcının değerini ELİYLE DEĞİŞTİRDİĞİ sensörü yeni limitlerle hesapla
       if (matchThreshold && matchThreshold.isUserModified && !isNaN(val)) {
         if (val < matchThreshold.criticalMin || val > matchThreshold.criticalMax) {
           sensor.state = 'Anormal';
@@ -334,12 +495,10 @@ export class DefectTrackerComponent {
           sensor.state = 'Normal';
         }
       } else {
-        // Dokunulmayan diğer tüm sensörlerde BACKEND'DEN GELEN İLK UYARI DURUMUNU KORU
         sensor.state = sensor.originalState;
       }
     });
 
-    // Aşamaların ANOMALİ durumlarını güncel duruma göre yenile
     this.stages.forEach(stage => {
       const stageNameLower = stage.title.toLowerCase().trim();
 
@@ -352,7 +511,6 @@ export class DefectTrackerComponent {
       stage.delta = hasAnomaly ? 'Anomali Sapması' : 'Nominal';
     });
 
-    // Filtrelenmiş ekranı tazele
     if (this.selectedStageName) {
       this.selectStage(this.selectedStageName);
     } else {
