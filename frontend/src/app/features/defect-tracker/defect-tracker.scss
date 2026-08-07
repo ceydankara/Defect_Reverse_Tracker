@@ -577,4 +577,186 @@
   border: 2px solid #ef4444 !important;
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
   background-color: rgba(239, 68, 68, 0.05) !important;
+}/* FORM VE BİLET BARI STİLLERİ */
+.ticket-form-card {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #1e293b;
+}
+
+.form-main-title {
+  font-size: 1.5rem;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+
+.form-sub-title {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #38bdf8;
+  margin-bottom: 12px;
+  .num {
+    background: #0284c7;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.location-btn-group {
+  display: flex;
+  gap: 8px;
+  button {
+    flex: 1;
+    padding: 10px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    border-radius: 6px;
+    cursor: pointer;
+    &.active {
+      background: #0284c7;
+      color: white;
+      border-color: #38bdf8;
+    }
+  }
+}
+
+.defect-group-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.defect-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.defect-btn-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  color: #f8fafc;
+  &.wide {
+    text-align: left;
+  }
+  &.selected {
+    border-color: #00b4d8;
+    background: rgba(0, 180, 216, 0.15);
+  }
+  .d-sub {
+    font-size: 0.7rem;
+    color: #94a3b8;
+  }
+}
+
+.dark-textarea {
+  width: 100%;
+  height: 80px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.form-footer-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  .btn-submit-ticket {
+    background: #00b4d8;
+    color: #fff;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+/* TICKET BARI */
+.ticket-bar {
+  background: #0f172a;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  .ticket-info-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    .t-badge {
+      background: #0284c7;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .t-item {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      strong { color: #f8fafc; }
+    }
+  }
+  .btn-new-ticket {
+    background: #334155;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+}
+
+/* SENSÖR KARTLARI ÖZEL SEÇİM SINIFLARI */
+.sensor-card-anormal {
+  border: 1px solid #ef4444 !important;
+}
+
+.sensor-selected-normal {
+  border: 2px solid #00b4d8 !important;
+  box-shadow: 0 0 10px rgba(0, 180, 216, 0.3) !important;
+}
+
+.sensor-selected-anomaly {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
 }
