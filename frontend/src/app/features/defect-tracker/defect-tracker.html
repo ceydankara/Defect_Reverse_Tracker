@@ -183,8 +183,9 @@
       <div class="sensor-grid">
         <div *ngFor="let sensor of filteredSensors"
              class="sensor-card"
-             [class.active-card]="sensor.title === selectedSensorTitle"
-             [class.sensor-anomali]="sensor.state === 'Anormal'"
+             [class.sensor-card-anormal]="sensor.state === 'Anormal'"
+             [class.sensor-selected-anomaly]="selectedSensorTitle === sensor.title && sensor.state === 'Anormal'"
+             [class.sensor-selected-normal]="selectedSensorTitle === sensor.title && sensor.state !== 'Anormal'"
              (click)="onSelectSensorCard(sensor)">
           <div class="sensor-header">
             <span class="sensor-title">{{ sensor.title }}</span>

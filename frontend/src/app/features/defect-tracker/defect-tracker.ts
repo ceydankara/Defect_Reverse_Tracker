@@ -178,11 +178,11 @@ export class DefectTrackerComponent implements AfterViewInit {
           this.isLoading = false;
         }
 
-        // 3. Kök Neden Mantığı (OK / ANOMALİ Sınıflandırması)
+        // 3. Kök Neden Mantığı (Dinamik Formül Entegrasyonu)
         if (data.rootCause) {
           const hasAnyStageAnomaly = this.stages.some(s => s.status === 'ANOMALİ');
 
-          // A) TÜM SENSÖRLER / AŞAMALAR "OK" İSE HASAR LOJİSTİK KAYNAKLIDIR
+          // A) TÜM SENSÖRLER "OK" İSE HASAR %90 LOJİSTİK KAYNAKLIDIR
           if (!hasAnyStageAnomaly) {
             this.productionImpact = 10;
             this.logisticImpact = 90;
@@ -197,14 +197,24 @@ export class DefectTrackerComponent implements AfterViewInit {
               'Kusur morfolojisi fabrika dışı taşıma, istifleme veya yükleme kaynaklı mekanik darbelerle uyuşmaktadır.'
             ];
           }
-          // B) EĞER EN AZ BİR ANOMALİ VARSA HASAR ÜRETİM KAYNAKLIDIR
+          // B) EĞER ANOMALİ VARSA ORANI DİNAMİK MÜHENDİSLİK FORMÜLÜ İLE HESAPLA
           else {
-            const prodRaw = data.rootCause.productionImpactPct || 90;
-            const logRaw = data.rootCause.logisticImpactPct || 10;
-            const total = prodRaw + logRaw;
+            // Anormal olan sensörü bul ve sapma yüzdesini al
+            const anomalousSensor = this.allSensors.find(s => s.state === 'Anormal');
+            let deviationPct = 0;
 
-            this.productionImpact = Math.round((prodRaw / total) * 100);
-            this.logisticImpact = 100 - this.productionImpact;
+            if (anomalousSensor && anomalousSensor.delta) {
+              // "+%10.9" string ifadesini saf sayıya çeviriyoruz (10.9)
+              deviationPct = Math.abs(parseFloat(anomalousSensor.delta.replace('%', '').replace('+', ''))) || 0;
+            }
+
+            // FORMÜL: Taban %50 + (Sapma Yüzdesi * 1.5). Maksimum %95 ile sınırlandırılır.
+            let calculatedProdImpact = Math.round(50 + (deviationPct * 1.5));
+            if (calculatedProdImpact > 95) calculatedProdImpact = 95;
+            if (calculatedProdImpact < 50) calculatedProdImpact = 50;
+
+            this.productionImpact = calculatedProdImpact;
+            this.logisticImpact = 100 - calculatedProdImpact;
 
             const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
             const equipmentName = data.rootCause.equipment || 'Ekipman';
@@ -215,7 +225,7 @@ export class DefectTrackerComponent implements AfterViewInit {
 
             const dynamicEvidence: string[] = [
               data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında tolerans dışı sapma tespit edildi.`,
-              `Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
+              `Hesaplanan Sapma Şiddeti: %${deviationPct} -> Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
             ];
 
             if (defectCode.includes('THICKNESS') || defectCode.includes('EDGE')) {
