@@ -1,6 +1,7 @@
 import { Component, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { DefectService } from '../../core/services/defect';
 import { AnalysisResponseDto } from '../../core/models/defect.model';
 import { Chart, registerables } from 'chart.js';
@@ -94,7 +95,10 @@ export class DefectTrackerComponent implements AfterViewInit {
   selectedSensorTitle: string = '';
   selectedSensorStage: string = '';
 
-  constructor(private defectService: DefectService) {}
+  constructor(
+    private defectService: DefectService,
+    private http: HttpClient
+  ) {}
 
   ngAfterViewInit(): void {
     if (this.isAnalyzed && this.filteredSensors.length > 0) {
@@ -107,7 +111,7 @@ export class DefectTrackerComponent implements AfterViewInit {
     this.defectType = type;
   }
 
-  // TALEP OLUŞTURMA VE ANALİZİ BAŞLATMA
+  // TALEP OLUŞTURMA VE VERİTABANINA KAYDETME
   onSubmitTicketAndStartAnalysis(): void {
     if (!this.reporterName || this.reporterName.trim() === '') {
       alert('Lütfen Ad Soyad alanını doldurunuz!');
@@ -126,13 +130,31 @@ export class DefectTrackerComponent implements AfterViewInit {
       return;
     }
 
-    // Rastgele Bilet Numarası Oluşturma
-    const randomTicketId = Math.floor(1000 + Math.random() * 9000);
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    this.ticketNumber = `TKT-${dateStr}-${randomTicketId}`;
+    this.isLoading = true;
 
-    this.isFormSubmitted = true;
-    this.onStartAnalysis();
+    const payload = {
+      reporterName: this.reporterName,
+      department: this.department,
+      batchId: this.batchId,
+      detectedLocation: this.detectedLocation,
+      defectType: this.defectType,
+      extraNotes: this.extraNotes
+    };
+
+    // Doğrudan Spring Boot backend portuna (8080) İstek Atılıyor
+    this.http.post<any>('http://localhost:8080/api/tickets', payload).subscribe({
+      next: (savedTicket) => {
+        // Veritabanından gelen resmi ticketNumber atanır
+        this.ticketNumber = savedTicket.ticketNumber;
+        this.isFormSubmitted = true;
+        this.onStartAnalysis();
+      },
+      error: (err) => {
+        console.error('Veritabanına kayıt atılırken hata oluştu:', err);
+        this.isLoading = false;
+        alert('Talep veritabanına kaydedilemedi! Lütfen Backend (Spring Boot) servisinizin 8080 portunda çalıştığından ve @CrossOrigin izinlerinin açık olduğundan emin olun.');
+      }
+    });
   }
 
   // YENİ TALEP AÇMA (FORM EKRANINA GERİ DÖNÜŞ)
@@ -213,10 +235,11 @@ export class DefectTrackerComponent implements AfterViewInit {
           this.isLoading = false;
         }
 
-        // 3. Kök Neden Mantığı ve Formül
+        // 3. Kök Neden Mantığı ve Mühendislik Formülü
         if (data.rootCause) {
           const hasAnyStageAnomaly = this.stages.some(s => s.status === 'ANOMALİ');
 
+          // A) TÜM SENSÖRLER "OK" İSE HASAR %90 LOJİSTİK KAYNAKLIDIR
           if (!hasAnyStageAnomaly) {
             this.productionImpact = 10;
             this.logisticImpact = 90;
@@ -230,7 +253,9 @@ export class DefectTrackerComponent implements AfterViewInit {
               'Tesis içi üretim süreçlerinde herhangi bir tolerans aşımı veya termal/mekanik sapma tespit edilmemiştir.',
               'Kusur morfolojisi fabrika dışı taşıma, istifleme veya yükleme kaynaklı mekanik darbelerle uyuşmaktadır.'
             ];
-          } else {
+          }
+          // B) ANOMALİ VARSA ORANI DİNAMİK MÜHENDİSLİK FORMÜLÜ İLE HESAPLA
+          else {
             const anomalousSensor = this.allSensors.find(s => s.state === 'Anormal');
             let deviationPct = 0;
 
@@ -238,6 +263,7 @@ export class DefectTrackerComponent implements AfterViewInit {
               deviationPct = Math.abs(parseFloat(anomalousSensor.delta.replace('%', '').replace('+', ''))) || 0;
             }
 
+            // Formül: Taban %50 + (Sapma % * 1.5)
             let calculatedProdImpact = Math.round(50 + (deviationPct * 1.5));
             if (calculatedProdImpact > 95) calculatedProdImpact = 95;
             if (calculatedProdImpact < 50) calculatedProdImpact = 50;
@@ -253,11 +279,10 @@ export class DefectTrackerComponent implements AfterViewInit {
 
             const dynamicEvidence: string[] = [
               data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında tolerans dışı sapma tespit edildi.`,
-              `Hesaplanan Sapma Şiddeti: %${deviationPct} -> Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
+              `Hesaplanan Sapma Şiddeti: %${deviationPct} -> Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`,
+              `${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`,
+              `Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`
             ];
-
-            dynamicEvidence.push(`${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`);
-            dynamicEvidence.push(`Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`);
             this.evidenceList = dynamicEvidence;
           }
         }
@@ -449,7 +474,7 @@ export class DefectTrackerComponent implements AfterViewInit {
     this.chart.update();
   }
 
-  // ALARM EŞİĞİ MODAL
+  // ALARM EŞİĞİ MODAL MANTIĞI
   openThresholdModal(): void {
     if (this.savedThresholds && this.savedThresholds.length > 0) {
       this.thresholdSensors = JSON.parse(JSON.stringify(this.savedThresholds));
