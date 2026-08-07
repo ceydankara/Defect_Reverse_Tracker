@@ -760,3 +760,254 @@
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
   background-color: rgba(239, 68, 68, 0.05) !important;
 }
+/* DEFECT TRACKER STYLES */
+
+.tracker-container {
+  background-color: #0b1120;
+  color: #f8fafc;
+  padding: 24px;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* HASAR TALEP FORMU KARTLARI (2. FOTOĞRAF BİREBİR UYUMLU) */
+.ticket-form-card {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.form-main-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.form-sub-title {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-bottom: 28px;
+}
+
+/* Her Adım İçin Çerçeveli Kart Yapısı */
+.form-section {
+  background: #111827;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Mavi Yuvarlak Numaralı Başlıklar */
+.section-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 20px;
+
+  .num {
+    background: #0284c7;
+    color: #ffffff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+}
+
+/* Grid Yapısı ve Koyu Inputlar */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+}
+
+.dark-input {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease;
+
+  &:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+  }
+
+  &::placeholder {
+    color: #475569;
+  }
+}
+
+/* Hasar Nerede Fark Edildi Buton Grubu */
+.location-btn-group {
+  display: flex;
+  gap: 10px;
+
+  button {
+    flex: 1;
+    padding: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #334155;
+      color: #fff;
+    }
+
+    &.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.3);
+    }
+  }
+}
+
+/* Hasar Türü Seçim Kartları */
+.defect-group-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.defect-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.defect-btn-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+
+  .d-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  &:hover {
+    border-color: #0284c7;
+    background: #24334a;
+  }
+
+  &.selected {
+    border: 2px solid #00b4d8;
+    background: rgba(0, 180, 216, 0.12);
+    box-shadow: 0 0 12px rgba(0, 180, 216, 0.25);
+
+    .d-title {
+      color: #38bdf8;
+    }
+  }
+
+  &.wide {
+    grid-column: span 3;
+    align-items: flex-start;
+    text-align: left;
+    padding: 16px;
+
+    .d-sub {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+  }
+}
+
+/* Textarea Stili */
+.dark-textarea {
+  width: 100%;
+  height: 100px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: #0284c7;
+  }
+}
+
+/* Alt Buton ve Özet */
+.form-footer-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+
+  .summary-text {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .btn-submit-ticket {
+    background: linear-gradient(135deg, #0284c7 0%, #00b4d8 100%);
+    color: #ffffff;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+    }
+  }
+}
