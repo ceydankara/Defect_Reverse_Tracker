@@ -136,58 +136,7 @@ export class DefectTrackerComponent implements AfterViewInit {
           }));
         }
 
-        // 2. Kök Neden
-        if (data.rootCause) {
-          const prodRaw = data.rootCause.productionImpactPct || 0;
-          const logRaw = data.rootCause.logisticImpactPct || 0;
-          const total = prodRaw + logRaw;
-
-          if (total > 0) {
-            this.productionImpact = Math.round((prodRaw / total) * 100);
-            this.logisticImpact = 100 - this.productionImpact;
-          } else {
-            this.productionImpact = 100;
-            this.logisticImpact = 0;
-          }
-
-          const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
-          const equipmentName = data.rootCause.equipment || 'Ekipman';
-          const defectCode = data.defectCode || this.defectType;
-
-          this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
-          this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin.';
-
-          const dynamicEvidence: string[] = [
-            data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında sapma tespit edildi.`,
-            `Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
-          ];
-
-          if (this.logisticImpact > 50) {
-            dynamicEvidence.push('Tesis içi üretim sensörlerinde kritik tolerans aşımı tespit edilmedi.');
-            dynamicEvidence.push('Hasar morfolojisi dış mekanik darbe veya yükleme/istifleme izleri ile uyuşuyor.');
-            dynamicEvidence.push('Saha içi stok/nakliye kayıtlarında elleçleme uyarısı mevcut.');
-          } else {
-            if (defectCode.includes('THICKNESS') || defectCode.includes('EDGE')) {
-              dynamicEvidence.push(`${equipmentName} üzerinde hidrolik baskı sapması proses limitlerini aştı.`);
-              dynamicEvidence.push('Şerit gerginlik ve kalınlık profil verilerinde anlık dalgalanma doğrulandı.');
-            } else if (defectCode.includes('TEMP') || defectCode.includes('HEAT') || defectCode.includes('BURN')) {
-              dynamicEvidence.push('Sıcaklık sensörlerinden alınan veriler termal şok eşiğini geçti.');
-              dynamicEvidence.push('Soğutma/Isıtma hattı debi verilerinde dengesizlik kaydedildi.');
-            } else if (defectCode.includes('ACID') || defectCode.includes('PICKLING')) {
-              dynamicEvidence.push('Kimyasal banyo konsantrasyonu ve pH seviyelerinde reaksiyon sapması görüldü.');
-              dynamicEvidence.push('Sıyırıcı/durulama hattında solüsyon birikintisi tespit edildi.');
-            } else {
-              dynamicEvidence.push(`${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`);
-              dynamicEvidence.push('Anomali süresi kusur oluşumu için gerekli kritik süre eşiğini geçti.');
-            }
-
-            dynamicEvidence.push(`Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`);
-          }
-
-          this.evidenceList = dynamicEvidence;
-        }
-
-        // 3. Sensörler ve Zaman Serisi Verileri
+        // 2. Sensörler ve Zaman Serisi Verileri
         if (data.sensorSummaries && data.sensorSummaries.length > 0) {
           const colors: ('amber' | 'cyan' | 'violet' | 'teal')[] = ['amber', 'cyan', 'violet', 'teal'];
 
@@ -196,7 +145,7 @@ export class DefectTrackerComponent implements AfterViewInit {
             return {
               title: s.sensorKey,
               value: s.lastActualValue !== undefined && s.lastActualValue !== null ? s.lastActualValue.toString() : '0',
-              unit: (s as any).unit || 'değer', // (s as any).unit şeklinde güncellendi
+              unit: (s as any).unit || 'değer',
               delta: `${s.percentageDeviation && s.percentageDeviation > 0 ? '+' : ''}${s.percentageDeviation || 0}%`,
               state: isAnomali ? 'Anormal' : 'Normal',
               originalState: isAnomali ? 'Anormal' : 'Normal',
@@ -227,6 +176,60 @@ export class DefectTrackerComponent implements AfterViewInit {
         } else {
           this.isAnalyzed = true;
           this.isLoading = false;
+        }
+
+        // 3. Kök Neden Mantığı (OK / ANOMALİ Sınıflandırması)
+        if (data.rootCause) {
+          const hasAnyStageAnomaly = this.stages.some(s => s.status === 'ANOMALİ');
+
+          // A) TÜM SENSÖRLER / AŞAMALAR "OK" İSE HASAR LOJİSTİK KAYNAKLIDIR
+          if (!hasAnyStageAnomaly) {
+            this.productionImpact = 10;
+            this.logisticImpact = 90;
+
+            this.rootCauseEquipment = 'Lojistik & Dış Etken / Depo - Nakliye Hattı';
+            this.recommendedAction = 'Müşteri sevkiyat kayıtlarını, forklift elleçleme raporlarını ve stok sahası kilitlerini denetleyin.';
+
+            this.evidenceList = [
+              'Üretim hattındaki tüm sensör verileri (Çelikhane, Haddehane, Asitleme) nominal limitler dahilindedir.',
+              'Etki Dağılımı: Üretim %10 | Lojistik %90 (Lojistik Ağırlıklı Hasar)',
+              'Tesis içi üretim süreçlerinde herhangi bir tolerans aşımı veya termal/mekanik sapma tespit edilmemiştir.',
+              'Kusur morfolojisi fabrika dışı taşıma, istifleme veya yükleme kaynaklı mekanik darbelerle uyuşmaktadır.'
+            ];
+          }
+          // B) EĞER EN AZ BİR ANOMALİ VARSA HASAR ÜRETİM KAYNAKLIDIR
+          else {
+            const prodRaw = data.rootCause.productionImpactPct || 90;
+            const logRaw = data.rootCause.logisticImpactPct || 10;
+            const total = prodRaw + logRaw;
+
+            this.productionImpact = Math.round((prodRaw / total) * 100);
+            this.logisticImpact = 100 - this.productionImpact;
+
+            const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
+            const equipmentName = data.rootCause.equipment || 'Ekipman';
+            const defectCode = data.defectCode || this.defectType;
+
+            this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
+            this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin.';
+
+            const dynamicEvidence: string[] = [
+              data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında tolerans dışı sapma tespit edildi.`,
+              `Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
+            ];
+
+            if (defectCode.includes('THICKNESS') || defectCode.includes('EDGE')) {
+              dynamicEvidence.push(`${equipmentName} üzerinde hidrolik baskı sapması proses limitlerini aştı.`);
+              dynamicEvidence.push('Şerit gerginlik ve kalınlık profil verilerinde anlık dalgalanma doğrulandı.');
+            } else if (defectCode.includes('TEMP') || defectCode.includes('HEAT')) {
+              dynamicEvidence.push('Sıcaklık sensörlerinden alınan veriler termal şok eşiğini geçti.');
+            } else {
+              dynamicEvidence.push(`${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`);
+            }
+
+            dynamicEvidence.push(`Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`);
+            this.evidenceList = dynamicEvidence;
+          }
         }
       },
       error: (err) => {
@@ -379,21 +382,26 @@ export class DefectTrackerComponent implements AfterViewInit {
       }
     }
 
-    // 2. Limit Çizgileri Hesabı
-    const warningVal = matchThreshold ? matchThreshold.warningMax : Math.round(targetVal * 1.08 * 10) / 10;
-    const criticalVal = matchThreshold ? matchThreshold.criticalMax : Math.round(targetVal * 1.15 * 10) / 10;
+    // 2. YÖN DİNAMİĞİ KONTROLÜ (Değer Hedefin Altında mı Üstünde mi?)
+    const isBelowTarget = val < targetVal;
+
+    // Eğer değer hedef seviyesinin altındaysa ALT EŞİKLERİ, üstündeyse ÜST EŞİKLERİ çiz
+    let warningVal = matchThreshold
+      ? (isBelowTarget ? matchThreshold.warningMin : matchThreshold.warningMax)
+      : Math.round(targetVal * (isBelowTarget ? 0.92 : 1.08) * 10) / 10;
+
+    let criticalVal = matchThreshold
+      ? (isBelowTarget ? matchThreshold.criticalMin : matchThreshold.criticalMax)
+      : Math.round(targetVal * (isBelowTarget ? 0.85 : 1.15) * 10) / 10;
 
     let realData: number[] = [];
     const timePoints = 19;
 
-    // 3. EĞER BACKEND'DEN/VERİTABANINDAN DİZİ GELİYORSA ONU KULLAN
     if (activeSensor.timeSeries && activeSensor.timeSeries.length > 0) {
       realData = activeSensor.timeSeries.map((item: any) =>
         typeof item === 'number' ? item : (item.actualValue !== undefined ? item.actualValue : (item.value || 0))
       );
-    }
-    // 4. GELMİYORSA SENSÖR ADINA VE SENSÖR DURUMUNA ÖZEL BENZERSIZ GRAFİK ÜRET
-    else {
+    } else {
       const isAnomali = activeSensor.state === 'Anormal';
       const sTitle = this.selectedSensorTitle.toLowerCase();
       const titleHash = sTitle.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -402,11 +410,9 @@ export class DefectTrackerComponent implements AfterViewInit {
         let currentVal = targetVal;
 
         if (!isAnomali) {
-          // Normal sensörler nominal hedef etrafında minik gürültü çizer
           const microNoise = Math.sin(i + titleHash) * (targetVal * 0.015);
           currentVal = targetVal + microNoise;
         } else {
-          // Anormal sensörler sensörün fiziksel tipine göre değişir
           if (sTitle.includes('sıcaklık') || sTitle.includes('fırın') || sTitle.includes('banyo')) {
             const trend = (i / timePoints) * (val - targetVal);
             currentVal = targetVal + trend + (Math.sin(i) * targetVal * 0.01);
@@ -443,8 +449,8 @@ export class DefectTrackerComponent implements AfterViewInit {
       (datasets[0] as any).backgroundColor = isAnomali ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
 
       datasets[1].data = Array(realData.length).fill(targetVal);   // Mavi Hedef
-      datasets[2].data = Array(realData.length).fill(warningVal);  // Sarı Uyarı
-      datasets[3].data = Array(realData.length).fill(criticalVal); // Kırmızı Kritik
+      datasets[2].data = Array(realData.length).fill(warningVal);  // Dinamik Sarı Uyarı (Alt/Üst)
+      datasets[3].data = Array(realData.length).fill(criticalVal); // Dinamik Kırmızı Kritik (Alt/Üst)
     }
 
     this.chart.update();
