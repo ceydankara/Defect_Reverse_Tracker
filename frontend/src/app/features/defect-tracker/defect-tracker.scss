@@ -559,3 +559,22 @@
     background: rgba(15, 23, 42, 0.8);
   }
 }
+/* SENSÖR KARTLARI ÖZEL SEÇİM SINIFLARI */
+
+/* 1. Anormal Sensörler (Sabit Kırmızı Kutu) */
+.sensor-card-anormal {
+  border: 1px solid #ef4444 !important;
+}
+
+/* 2. Seçili Mavi Kart (Normal Sensör Seçildiğinde) */
+.sensor-selected-normal {
+  border: 2px solid #00b4d8 !important;
+  box-shadow: 0 0 10px rgba(0, 180, 216, 0.3) !important;
+}
+
+/* 3. Seçili Kırmızı Kart (Anormal Sensör Seçildiğinde) */
+.sensor-selected-anomaly {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}
