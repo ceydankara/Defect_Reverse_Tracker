@@ -1,17 +1,17 @@
 import math
 import random
-import psycopg2  # MySQL için: import mysql.connector as psycopg2
+import psycopg2
 
 # 1. VERİTABANI BAĞLANTI AYARLARI
 DB_CONFIG = {
     "dbname": "Defect Reverse-Tracker",
     "user": "postgres",
-    "password": "***",
+    "password": "YOUR_PASSWORD_HERE",  # Postgres şifrenizi girin
     "host": "localhost",
     "port": "5432"
 }
 
-# 2. SENSÖR TANIMLARI VE NOMİNAL DEĞERLERİ
+# 2. SENSÖR TANIMLARI VE BİREBİR UYUMLU İSİMLERİ (Her aşamada 4 kritik sensör)
 SENSORS = [
     # Çelikhane
     {"name": "Fırın Sıcaklığı", "stage": "Çelikhane", "target": 1150, "unit": "°C", "type": "temp"},
@@ -31,11 +31,11 @@ SENSORS = [
     {"name": "Tank pH Seviyesi", "stage": "Asitleme", "target": 1.2, "unit": "pH", "type": "flow"},
     {"name": "Sıyırıcı Rulo Basıncı", "stage": "Asitleme", "target": 4.2, "unit": "bar", "type": "pressure"},
 
-    # Soğuk Haddehane
+    # Soğuk Haddehane (Arayüzdeki kartlarla tam eşleşen 4 sensör)
+    {"name": "Merdane Kuvveti", "stage": "Soğuk Haddehane", "target": 10, "unit": "kN", "type": "pressure"},
     {"name": "Şerit Gerginliği", "stage": "Soğuk Haddehane", "target": 125, "unit": "kN", "type": "pressure"},
-    {"name": "Sac Çıkış Kalınlığı", "stage": "Soğuk Haddehane", "target": 1.5, "unit": "mm", "type": "pressure"},
-    {"name": "X-Ray Kalınlık Sapması", "stage": "Soğuk Haddehane", "target": 0.02, "unit": "mm", "type": "vibration"},
-    {"name": "Yağlama Debisi", "stage": "Soğuk Haddehane", "target": 18.5, "unit": "L/dk", "type": "flow"}
+    {"name": "Rulman Sıcaklığı", "stage": "Soğuk Haddehane", "target": 60, "unit": "°C", "type": "temp"},
+    {"name": "Emülsiyon Debisi", "stage": "Soğuk Haddehane", "target": 280, "unit": "L/dk", "type": "flow"}
 ]
 
 def generate_time_series(sensor, is_anomalous):
@@ -53,24 +53,24 @@ def generate_time_series(sensor, is_anomalous):
             noise = (random.random() - 0.5) * (target * 0.02)
             val = target + noise
         else:
-            # Anomali durumu: Fiziksel türe göre 50-130. saniyeler arasında kırılma
+            # Anomali durumu: Fiziksel türe göre kırılma
             if s_type == "temp":
-                # Sıcaklık anomalisinde ısınma/soğuma eğrisi
+                # Sıcaklık anomalisinde yükselme eğrisi
                 drift = (step / 18) * (target * 0.25)
                 val = target + drift + random.uniform(-2, 2)
             elif s_type == "pressure":
-                # Basınç ve gerginlikte ani düşüş/yükseliş dalgası
-                if 5 <= step <= 13:
-                    val = target * 1.28 + random.uniform(-1, 1)
+                # Basınç ve kuvvet/gerginlikte aşırı yükseliş
+                if step >= 5:
+                    val = target * 1.35 + random.uniform(-1, 1)
                 else:
                     val = target + random.uniform(-0.5, 0.5)
             elif s_type == "vibration":
-                # Titreşimde zigzag / testere dişi gürültü
-                noise = random.uniform(target * 0.2, target * 0.6)
-                val = target + noise if step >= 6 else target
+                # Titreşimde zigzag gürültü
+                noise = random.uniform(target * 0.3, target * 0.7)
+                val = target + noise if step >= 5 else target
             else:
                 # Akış ve pH kayması (Drift)
-                val = target * (1 - (step / 18) * 0.3) if step >= 4 else target
+                val = target * (1 + (step / 18) * 0.8) if step >= 4 else target
 
         series.append((sec, round(val, 2)))
 
@@ -82,10 +82,17 @@ def insert_batch_data(coil_id, anomalous_sensor_name):
         conn = psycopg2.connect(**DB_CONFIG)
         cursor = conn.cursor()
 
-        # Önceki verileri temizle (Varsa)
-        cursor.execute("DELETE FROM sensor_readings WHERE coil_id = %s;", (coil_id,))
+        print(f"🔄 '{coil_id}' için veriler veritabanına işleniyor...")
 
-        print(f"🔄 '{coil_id}' için 180 saniyelik zaman serisi verisi üretiliyor...")
+        # 1. 'coils' tablosundaki NOT NULL kısıtlamasını aşmak için bobini kaydet
+        cursor.execute("""
+            INSERT INTO coils (coil_id, steel_grade)
+            VALUES (%s, 'DX51D')
+            ON CONFLICT (coil_id) DO NOTHING;
+        """, (coil_id,))
+
+        # 2. Önceki eski kayıtları temizle
+        cursor.execute("DELETE FROM sensor_readings WHERE coil_id = %s;", (coil_id,))
 
         total_inserted = 0
         for sensor in SENSORS:
@@ -93,9 +100,8 @@ def insert_batch_data(coil_id, anomalous_sensor_name):
             time_series = generate_time_series(sensor, is_anomalous)
 
             for sec, actual_val in time_series:
-                status = "ANOMALI" if (is_anomalous and 50 <= sec <= 130) else "NORMAL"
+                status = "ANOMALI" if (is_anomalous and sec >= 50) else "NORMAL"
 
-                # Tablonuzdaki kolon adı 'time_second' olduğu için query güncellendi:
                 query = """
                     INSERT INTO sensor_readings 
                     (coil_id, sensor_key, stage_name, time_second, actual_value, target_value, unit, status)
@@ -105,7 +111,7 @@ def insert_batch_data(coil_id, anomalous_sensor_name):
                     coil_id,
                     sensor["name"],
                     sensor["stage"],
-                    sec,  # time_second alanına saniye değeri yazılıyor (0, 10, ... 180)
+                    sec,
                     actual_val,
                     sensor["target"],
                     sensor["unit"],
@@ -116,12 +122,12 @@ def insert_batch_data(coil_id, anomalous_sensor_name):
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"✅ Başarılı! Toplam {total_inserted} adet zaman serisi kaydı ekledi.")
+        print(f"✅ Başarılı! '{coil_id}' için toplam {total_inserted} adet zaman serisi kaydı eklendi.\n")
 
     except Exception as e:
-        print(f"❌ Veritabanı Hatası: {e}")
+        print(f"❌ Veritabanı Hatası: {e}\n")
 
-# 3. VERİ ÜRETİMİNİ TETİKLE
 if __name__ == "__main__":
-    # Test Senaryosu: BOBIN-2026-9041 için 'Fırın Sıcaklığı' sensörüne anomali verisi üret
-    insert_batch_data("BOBIN-2026-9043", "Fırın Sıcaklığı")
+    # Örnek Test Senaryoları:
+    insert_batch_data("BOBIN-2026-9043", "Cüruf Kalınlığı")
+    insert_batch_data("BOBIN-2026-9044", "Emülsiyon Debisi")
