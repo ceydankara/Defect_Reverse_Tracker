@@ -6,7 +6,7 @@ import psycopg2
 DB_CONFIG = {
     "dbname": "Defect Reverse-Tracker",
     "user": "postgres",
-    "password": "YOUR_PASSWORD_HERE",  # Postgres şifrenizi girin
+    "password": "***", 
     "host": "localhost",
     "port": "5432"
 }
