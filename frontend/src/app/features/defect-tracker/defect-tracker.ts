@@ -58,7 +58,7 @@ export class DefectTrackerComponent implements AfterViewInit {
   reporterName: string = '';
   department: string = '';
   batchId: string = '';
-  detectedLocation: string = 'Üretim Hattı'; // 'Üretim Hattı' | 'Depo / Sevkiyat' | 'Müşteri / Saha'
+  detectedLocation: string = 'Üretim Hattı';
   defectType: string = '';
   extraNotes: string = '';
 
@@ -106,12 +106,10 @@ export class DefectTrackerComponent implements AfterViewInit {
     }
   }
 
-  // HASAR KUSUR SEÇİMİ (FORM İÇİN)
   selectDefectType(type: string): void {
     this.defectType = type;
   }
 
-  // TALEP OLUŞTURMA VE VERİTABANINA KAYDETME
   onSubmitTicketAndStartAnalysis(): void {
     if (!this.reporterName || this.reporterName.trim() === '') {
       alert('Lütfen Ad Soyad alanını doldurunuz!');
@@ -141,10 +139,8 @@ export class DefectTrackerComponent implements AfterViewInit {
       extraNotes: this.extraNotes
     };
 
-    // Doğrudan Spring Boot backend portuna (8080) İstek Atılıyor
     this.http.post<any>('http://localhost:8080/api/tickets', payload).subscribe({
       next: (savedTicket) => {
-        // Veritabanından gelen resmi ticketNumber atanır
         this.ticketNumber = savedTicket.ticketNumber;
         this.isFormSubmitted = true;
         this.onStartAnalysis();
@@ -152,12 +148,11 @@ export class DefectTrackerComponent implements AfterViewInit {
       error: (err) => {
         console.error('Veritabanına kayıt atılırken hata oluştu:', err);
         this.isLoading = false;
-        alert('Talep veritabanına kaydedilemedi! Lütfen Backend (Spring Boot) servisinizin 8080 portunda çalıştığından ve @CrossOrigin izinlerinin açık olduğundan emin olun.');
+        alert('Talep veritabanına kaydedilemedi! Lütfen Backend servisinizin çalıştığından emin olun.');
       }
     });
   }
 
-  // YENİ TALEP AÇMA (FORM EKRANINA GERİ DÖNÜŞ)
   openNewTicketForm(): void {
     this.isFormSubmitted = false;
     this.isAnalyzed = false;
@@ -188,12 +183,12 @@ export class DefectTrackerComponent implements AfterViewInit {
           this.stages = data.stages.map(s => ({
             title: s.stageName,
             status: (s.status === 'ANOMALI' ? 'ANOMALİ' : 'OK') as StageStatus,
-            value: `${s.sensorCount || 4} sensör`,
+            value: `4 sensör`,
             delta: s.status === 'ANOMALI' ? 'Anomali Sapması' : 'Nominal'
           }));
         }
 
-        // 2. Sensörler ve Zaman Serisi Verileri
+        // 2. Sensörler
         if (data.sensorSummaries && data.sensorSummaries.length > 0) {
           const colors: ('amber' | 'cyan' | 'violet' | 'teal')[] = ['amber', 'cyan', 'violet', 'teal'];
 
@@ -215,6 +210,9 @@ export class DefectTrackerComponent implements AfterViewInit {
           this.isAnalyzed = true;
           this.isLoading = false;
 
+          // Eşik Sensörlerini Veritabanından Gelen Gerçek İsimlerle Eşle
+          this.syncThresholdSensorsWithAllSensors();
+
           const anomaliStage = this.stages.find(s => s.status === 'ANOMALİ');
           if (anomaliStage) {
             this.selectStage(anomaliStage.title);
@@ -235,27 +233,21 @@ export class DefectTrackerComponent implements AfterViewInit {
           this.isLoading = false;
         }
 
-        // 3. Kök Neden Mantığı ve Mühendislik Formülü
+        // 3. Kök Neden Analizi
         if (data.rootCause) {
           const hasAnyStageAnomaly = this.stages.some(s => s.status === 'ANOMALİ');
 
-          // A) TÜM SENSÖRLER "OK" İSE HASAR %90 LOJİSTİK KAYNAKLIDIR
           if (!hasAnyStageAnomaly) {
             this.productionImpact = 10;
             this.logisticImpact = 90;
-
             this.rootCauseEquipment = 'Lojistik & Dış Etken / Depo - Nakliye Hattı';
-            this.recommendedAction = 'Müşteri sevkiyat kayıtlarını, forklift elleçleme raporlarını ve stok sahası kilitlerini denetleyin.';
-
+            this.recommendedAction = 'Müşteri sevkiyat kayıtlarını, forklift elleçleme raporlarını denetleyin.';
             this.evidenceList = [
-              'Üretim hattındaki tüm sensör verileri (Çelikhane, Haddehane, Asitleme) nominal limitler dahilindedir.',
+              'Üretim hattındaki tüm sensör verileri nominal limitler dahilindedir.',
               'Etki Dağılımı: Üretim %10 | Lojistik %90 (Lojistik Ağırlıklı Hasar)',
-              'Tesis içi üretim süreçlerinde herhangi bir tolerans aşımı veya termal/mekanik sapma tespit edilmemiştir.',
-              'Kusur morfolojisi fabrika dışı taşıma, istifleme veya yükleme kaynaklı mekanik darbelerle uyuşmaktadır.'
+              'Tesis içi üretim süreçlerinde herhangi bir tolerans aşımı tespit edilmemiştir.'
             ];
-          }
-          // B) ANOMALİ VARSA ORANI DİNAMİK MÜHENDİSLİK FORMÜLÜ İLE HESAPLA
-          else {
+          } else {
             const anomalousSensor = this.allSensors.find(s => s.state === 'Anormal');
             let deviationPct = 0;
 
@@ -263,7 +255,6 @@ export class DefectTrackerComponent implements AfterViewInit {
               deviationPct = Math.abs(parseFloat(anomalousSensor.delta.replace('%', '').replace('+', ''))) || 0;
             }
 
-            // Formül: Taban %50 + (Sapma % * 1.5)
             let calculatedProdImpact = Math.round(50 + (deviationPct * 1.5));
             if (calculatedProdImpact > 95) calculatedProdImpact = 95;
             if (calculatedProdImpact < 50) calculatedProdImpact = 50;
@@ -277,13 +268,10 @@ export class DefectTrackerComponent implements AfterViewInit {
             this.rootCauseEquipment = `${stageName} / ${equipmentName}`;
             this.recommendedAction = data.rootCause.recommendedAction || 'Bakım ekibini ilgili hatta yönlendirin.';
 
-            const dynamicEvidence: string[] = [
+            this.evidenceList = [
               data.rootCause.detectionDetail || `${stageName} aşamasında ${equipmentName} cihazında tolerans dışı sapma tespit edildi.`,
-              `Hesaplanan Sapma Şiddeti: %${deviationPct} -> Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`,
-              `${equipmentName} sensörlerinden alınan veriler tolerans limitlerini aştı.`,
-              `Aynı vardiyada ${stageName} hattından geçen bobin verilerinde benzer trend izlendi.`
+              `Hesaplanan Sapma Şiddeti: %${deviationPct} -> Etki Dağılımı: Üretim %${this.productionImpact} | Lojistik %${this.logisticImpact}`
             ];
-            this.evidenceList = dynamicEvidence;
           }
         }
       },
@@ -310,19 +298,19 @@ export class DefectTrackerComponent implements AfterViewInit {
       matches = this.allSensors.filter(sensor => {
         const sKey = sensor.title.toLowerCase();
         if (titleLower.includes('çelikhane')) {
-          return sKey.includes('fırın') || sKey.includes('pota') || sKey.includes('argon') || sKey.includes('cüruf') || sKey.includes('sıcaklık');
+          return sKey.includes('fırın') || sKey.includes('pota') || sKey.includes('argon') || sKey.includes('cüruf');
         } else if (titleLower.includes('sıcak')) {
-          return sKey.includes('merdane') || sKey.includes('şerit') || sKey.includes('rulman') || sKey.includes('emülsiyon') || sKey.includes('kuvvet');
+          return sKey.includes('merdane') || sKey.includes('şerit') || sKey.includes('rulman') || sKey.includes('emülsiyon') || sKey.includes('hız') || sKey.includes('basınç');
         } else if (titleLower.includes('asitleme')) {
-          return sKey.includes('asit') || sKey.includes('tank') || sKey.includes('ph') || sKey.includes('banyo') || sKey.includes('sıyırıcı');
+          return sKey.includes('asit') || sKey.includes('tank') || sKey.includes('ph') || sKey.includes('sıyırıcı');
         } else if (titleLower.includes('soğuk')) {
-          return sKey.includes('gerginlik') || sKey.includes('sac') || sKey.includes('kalınlık') || sKey.includes('x-ray') || sKey.includes('yağlama');
+          return sKey.includes('gerginlik') || sKey.includes('sac') || sKey.includes('x-ray') || sKey.includes('yağlama') || sKey.includes('kuvvet') || sKey.includes('sıcaklık') || sKey.includes('debi');
         }
         return sKey.includes(titleLower);
       });
     }
 
-    this.filteredSensors = matches.length > 0 ? matches : [...this.allSensors];
+    this.filteredSensors = matches.slice(0, 4);
 
     if (this.filteredSensors.length > 0) {
       setTimeout(() => {
@@ -378,15 +366,15 @@ export class DefectTrackerComponent implements AfterViewInit {
             pointRadius: 0
           },
           {
-            label: 'Uyarı Limiti',
+            label: 'Kritik Alt Limit',
             data: [],
-            borderColor: '#f59e0b',
+            borderColor: '#dc2626',
             borderDash: [5, 5],
             borderWidth: 1.5,
             pointRadius: 0
           },
           {
-            label: 'Kritik Limit',
+            label: 'Kritik Üst Limit',
             data: [],
             borderColor: '#dc2626',
             borderDash: [5, 5],
@@ -413,26 +401,23 @@ export class DefectTrackerComponent implements AfterViewInit {
     const activeSensor = this.allSensors.find(s => s.title === this.selectedSensorTitle);
     if (!activeSensor) return;
 
-    const val = parseFloat(activeSensor.value) || 100;
-    const matchThreshold = this.savedThresholds.find(t => t.name === this.selectedSensorTitle || t.id === this.selectedSensorTitle);
+    const val = parseFloat(activeSensor.value) || 0;
+    const matchThreshold = (this.savedThresholds.length > 0 ? this.savedThresholds : this.thresholdSensors)
+      .find(t => t.name === this.selectedSensorTitle || t.id === this.selectedSensorTitle);
 
-    let targetVal = matchThreshold ? matchThreshold.target : val;
-    if (!matchThreshold && activeSensor.delta) {
+    let targetVal = matchThreshold ? Number(matchThreshold.target) : 0;
+
+    if ((!targetVal || targetVal === 0) && activeSensor.delta) {
       const devPct = parseFloat(activeSensor.delta.replace('%', '').replace('+', '')) || 0;
       if (devPct !== 0) {
         targetVal = Math.round((val / (1 + devPct / 100)) * 10) / 10;
+      } else {
+        targetVal = val;
       }
     }
 
-    const isBelowTarget = val < targetVal;
-
-    let warningVal = matchThreshold
-      ? (isBelowTarget ? matchThreshold.warningMin : matchThreshold.warningMax)
-      : Math.round(targetVal * (isBelowTarget ? 0.92 : 1.08) * 10) / 10;
-
-    let criticalVal = matchThreshold
-      ? (isBelowTarget ? matchThreshold.criticalMin : matchThreshold.criticalMax)
-      : Math.round(targetVal * (isBelowTarget ? 0.85 : 1.15) * 10) / 10;
+    let critMin = matchThreshold ? Number(matchThreshold.criticalMin) : Math.round(targetVal * 0.85 * 10) / 10;
+    let critMax = matchThreshold ? Number(matchThreshold.criticalMax) : Math.round(targetVal * 1.15 * 10) / 10;
 
     let realData: number[] = [];
     const timePoints = 19;
@@ -452,13 +437,16 @@ export class DefectTrackerComponent implements AfterViewInit {
           const microNoise = Math.sin(i + titleHash) * (targetVal * 0.015);
           currentVal = targetVal + microNoise;
         } else {
-          currentVal = targetVal + ((val - targetVal) * (i / timePoints));
+          currentVal = targetVal + ((val - targetVal) * (i / (timePoints - 1)));
         }
         realData.push(Math.round(currentVal * 10) / 10);
       }
     }
 
-    const isAnomali = activeSensor.state === 'Anormal';
+    const isUpperViolated = realData.some(v => v > critMax) || val > critMax;
+    const isLowerViolated = realData.some(v => v < critMin) || val < critMin;
+    const isAnomali = isUpperViolated || isLowerViolated || activeSensor.state === 'Anormal';
+
     const datasets = this.chart.data.datasets;
 
     if (datasets && datasets.length >= 4) {
@@ -467,29 +455,53 @@ export class DefectTrackerComponent implements AfterViewInit {
       (datasets[0] as any).backgroundColor = isAnomali ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
 
       datasets[1].data = Array(realData.length).fill(targetVal);
-      datasets[2].data = Array(realData.length).fill(warningVal);
-      datasets[3].data = Array(realData.length).fill(criticalVal);
+
+      if (isLowerViolated) {
+        datasets[2].data = Array(realData.length).fill(critMin);
+      } else if (!isUpperViolated) {
+        datasets[2].data = Array(realData.length).fill(critMin);
+      } else {
+        datasets[2].data = [];
+      }
+
+      if (isUpperViolated) {
+        datasets[3].data = Array(realData.length).fill(critMax);
+      } else if (!isLowerViolated) {
+        datasets[3].data = Array(realData.length).fill(critMax);
+      } else {
+        datasets[3].data = [];
+      }
     }
 
     this.chart.update();
   }
 
-  // ALARM EŞİĞİ MODAL MANTIĞI
+  // DİNANİK MODAL İŞLEMLERİ (Arayüzdeki İsimlerle Birebir Eşleşir)
   openThresholdModal(): void {
     if (this.savedThresholds && this.savedThresholds.length > 0) {
       this.thresholdSensors = JSON.parse(JSON.stringify(this.savedThresholds));
     } else if (this.allSensors && this.allSensors.length > 0) {
+      // Ekrana gelen kart verisinden BİREBİR dinamik threshold üretimi
       this.thresholdSensors = this.allSensors.map(sensor => {
         const val = parseFloat(sensor.value) || 100;
+
+        let targetVal = val;
+        if (sensor.delta) {
+          const devPct = parseFloat(sensor.delta.replace('%', '').replace('+', '')) || 0;
+          if (devPct !== 0) {
+            targetVal = Math.round((val / (1 + devPct / 100)) * 10) / 10;
+          }
+        }
+
         return {
           id: sensor.title,
-          name: sensor.title,
+          name: sensor.title, // İSİM %100 BİREBİR EŞLEŞİR
           unit: sensor.unit || 'değer',
-          target: val,
-          criticalMin: Math.round(val * 0.85 * 10) / 10,
-          criticalMax: Math.round(val * 1.15 * 10) / 10,
-          warningMin: Math.round(val * 0.92 * 10) / 10,
-          warningMax: Math.round(val * 1.08 * 10) / 10,
+          target: targetVal,
+          criticalMin: Math.round(targetVal * 0.85 * 10) / 10,
+          criticalMax: Math.round(targetVal * 1.15 * 10) / 10,
+          warningMin: Math.round(targetVal * 0.92 * 10) / 10,
+          warningMax: Math.round(targetVal * 1.08 * 10) / 10,
           stage: this.detectStageBySensorName(sensor.title, sensor.stageName),
           isUserModified: false
         };
@@ -505,10 +517,13 @@ export class DefectTrackerComponent implements AfterViewInit {
   }
 
   saveThresholds(): void {
+    this.thresholdSensors.forEach(s => s.isUserModified = true);
     this.savedThresholds = JSON.parse(JSON.stringify(this.thresholdSensors));
+
     this.reevaluateSensorsAndStagesWithThresholds();
     this.updateChartData();
-    alert('Alarm eşikleri kaydedildi!');
+
+    alert('Alarm eşikleri güncellendi ve tüm sensörler yeniden değerlendirildi!');
     this.closeThresholdModal();
   }
 
@@ -517,7 +532,7 @@ export class DefectTrackerComponent implements AfterViewInit {
     if (this.allSensors && this.allSensors.length > 0) {
       this.allSensors.forEach(s => s.state = s.originalState);
     }
-    this.openThresholdModal();
+    this.syncThresholdSensorsWithAllSensors();
     this.reevaluateSensorsAndStagesWithThresholds();
     this.updateChartData();
     alert('Tüm sensör eşikleri sıfırlandı.');
@@ -526,15 +541,34 @@ export class DefectTrackerComponent implements AfterViewInit {
   private reevaluateSensorsAndStagesWithThresholds(): void {
     if (!this.allSensors || this.allSensors.length === 0) return;
 
-    this.allSensors.forEach(sensor => {
-      const val = parseFloat(sensor.value);
-      const matchThreshold = this.savedThresholds.find(t => t.id === sensor.title || t.name === sensor.title);
+    const thresholdList = this.savedThresholds.length > 0 ? this.savedThresholds : this.thresholdSensors;
 
-      if (matchThreshold && matchThreshold.isUserModified && !isNaN(val)) {
-        if (val < matchThreshold.criticalMin || val > matchThreshold.criticalMax) {
+    this.allSensors.forEach(sensor => {
+      const matchThreshold = thresholdList.find(t => t.id === sensor.title || t.name === sensor.title);
+
+      if (matchThreshold) {
+        const critMin = Number(matchThreshold.criticalMin);
+        const critMax = Number(matchThreshold.criticalMax);
+
+        let points: number[] = [];
+        if (sensor.timeSeries && sensor.timeSeries.length > 0) {
+          points = sensor.timeSeries.map((item: any) =>
+            typeof item === 'number' ? item : (item.actualValue !== undefined ? item.actualValue : (item.value || 0))
+          );
+        } else {
+          points = [parseFloat(sensor.value) || 0];
+        }
+
+        const hasAnomalyPoint = points.some(val => val < critMin || val > critMax);
+
+        if (hasAnomalyPoint) {
           sensor.state = 'Anormal';
         } else {
-          sensor.state = 'Normal';
+          if (!matchThreshold.isUserModified && sensor.originalState === 'Anormal') {
+            sensor.state = 'Anormal';
+          } else {
+            sensor.state = 'Normal';
+          }
         }
       } else {
         sensor.state = sensor.originalState;
@@ -564,12 +598,19 @@ export class DefectTrackerComponent implements AfterViewInit {
     );
   }
 
+  private syncThresholdSensorsWithAllSensors(): void {
+    if (this.allSensors && this.allSensors.length > 0) {
+      this.openThresholdModal();
+      this.isThresholdModalOpen = false;
+    }
+  }
+
   private detectStageBySensorName(title: string, stageName?: string): string {
     if (stageName) return stageName;
     const s = title.toLowerCase();
     if (s.includes('fırın') || s.includes('pota') || s.includes('argon') || s.includes('cüruf')) return 'Çelikhane';
     if (s.includes('merdane') || s.includes('şerit') || s.includes('rulman') || s.includes('emülsiyon')) return 'Sıcak Haddehane';
-    if (s.includes('asit') || s.includes('tank') || s.includes('ph') || s.includes('banyo')) return 'Asitleme';
+    if (s.includes('asit') || s.includes('tank') || s.includes('ph') || s.includes('sıyırıcı')) return 'Asitleme';
     return 'Soğuk Haddehane';
   }
 
@@ -579,18 +620,21 @@ export class DefectTrackerComponent implements AfterViewInit {
       { name: 'Pota Sıcaklığı', stage: 'Çelikhane', target: 1580, unit: '°C' },
       { name: 'Argon Akış Debisi', stage: 'Çelikhane', target: 450, unit: 'L/dk' },
       { name: 'Cüruf Kalınlığı', stage: 'Çelikhane', target: 12, unit: 'mm' },
+
       { name: 'Hadde Merdane Sıcaklığı', stage: 'Sıcak Haddehane', target: 880, unit: '°C' },
       { name: 'Şerit Çıkış Hızı', stage: 'Sıcak Haddehane', target: 15, unit: 'm/s' },
       { name: 'Rulman Titreşimi', stage: 'Sıcak Haddehane', target: 2.4, unit: 'mm/s' },
       { name: 'Emülsiyon Basıncı', stage: 'Sıcak Haddehane', target: 6.5, unit: 'bar' },
+
       { name: 'Asit Banyo Sıcaklığı', stage: 'Asitleme', target: 85, unit: '°C' },
       { name: 'Asit Konsantrasyonu (HCl)', stage: 'Asitleme', target: 18, unit: '%' },
       { name: 'Tank pH Seviyesi', stage: 'Asitleme', target: 1.2, unit: 'pH' },
       { name: 'Sıyırıcı Rulo Basıncı', stage: 'Asitleme', target: 4.2, unit: 'bar' },
+
+      { name: 'Merdane Kuvveti', stage: 'Soğuk Haddehane', target: 10, unit: 'kN' },
       { name: 'Şerit Gerginliği', stage: 'Soğuk Haddehane', target: 125, unit: 'kN' },
-      { name: 'Sac Çıkış Kalınlığı', stage: 'Soğuk Haddehane', target: 1.5, unit: 'mm' },
-      { name: 'X-Ray Kalınlık Sapması', stage: 'Soğuk Haddehane', target: 0.02, unit: 'mm' },
-      { name: 'Yağlama Debisi', stage: 'Soğuk Haddehane', target: 18.5, unit: 'L/dk' }
+      { name: 'Rulman Sıcaklığı', stage: 'Soğuk Haddehane', target: 60, unit: '°C' },
+      { name: 'Emülsiyon Debisi', stage: 'Soğuk Haddehane', target: 280, unit: 'L/dk' }
     ];
 
     this.thresholdSensors = defaultList.map(s => ({
