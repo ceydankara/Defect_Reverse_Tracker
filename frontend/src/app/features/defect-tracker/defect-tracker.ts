@@ -95,6 +95,25 @@ export class DefectTrackerComponent implements AfterViewInit {
   selectedSensorTitle: string = '';
   selectedSensorStage: string = '';
 
+  private defaultTargets: { [key: string]: number } = {
+    'Fırın Sıcaklığı': 1150,
+    'Pota Sıcaklığı': 1580,
+    'Argon Akış Debisi': 450,
+    'Cüruf Kalınlığı': 12,
+    'Hadde Merdane Sıcaklığı': 880,
+    'Şerit Çıkış Hızı': 15,
+    'Rulman Titreşimi': 2.4,
+    'Emülsiyon Basıncı': 6.5,
+    'Asit Banyo Sıcaklığı': 85,
+    'Asit Konsantrasyonu (HCl)': 18,
+    'Tank pH Seviyesi': 1.2,
+    'Sıyırıcı Rulo Basıncı': 4.2,
+    'Merdane Kuvveti': 10,
+    'Şerit Gerginliği': 125,
+    'Rulman Sıcaklığı': 60,
+    'Emülsiyon Debisi': 280
+  };
+
   constructor(
     private defectService: DefectService,
     private http: HttpClient
@@ -194,6 +213,16 @@ export class DefectTrackerComponent implements AfterViewInit {
 
           this.allSensors = data.sensorSummaries.map((s, index) => {
             const isAnomali = s.status === 'ANOMALI';
+
+            // GÜVENLİ ZAMAN SERİSİ ÇEKİMİ
+            let seriesData = (s as any).readings || (s as any).timeSeries || [];
+            if (data.timeSeriesData && data.timeSeriesData.length > 0) {
+              const matchedPoints = data.timeSeriesData.filter(ts => ts.sensorKey === s.sensorKey);
+              if (matchedPoints.length > 0) {
+                seriesData = matchedPoints;
+              }
+            }
+
             return {
               title: s.sensorKey,
               value: s.lastActualValue !== undefined && s.lastActualValue !== null ? s.lastActualValue.toString() : '0',
@@ -203,14 +232,13 @@ export class DefectTrackerComponent implements AfterViewInit {
               originalState: isAnomali ? 'Anormal' : 'Normal',
               stageName: (s as any).stageName,
               spark: colors[index % colors.length],
-              timeSeries: (s as any).timeSeries || (s as any).readings || []
+              timeSeries: seriesData
             };
           });
 
           this.isAnalyzed = true;
           this.isLoading = false;
 
-          // Eşik Sensörlerini Veritabanından Gelen Gerçek İsimlerle Eşle
           this.syncThresholdSensorsWithAllSensors();
 
           const anomaliStage = this.stages.find(s => s.status === 'ANOMALİ');
@@ -250,17 +278,21 @@ export class DefectTrackerComponent implements AfterViewInit {
           } else {
             const anomalousSensor = this.allSensors.find(s => s.state === 'Anormal');
             let deviationPct = 0;
-
             if (anomalousSensor && anomalousSensor.delta) {
               deviationPct = Math.abs(parseFloat(anomalousSensor.delta.replace('%', '').replace('+', ''))) || 0;
             }
 
-            let calculatedProdImpact = Math.round(50 + (deviationPct * 1.5));
-            if (calculatedProdImpact > 95) calculatedProdImpact = 95;
-            if (calculatedProdImpact < 50) calculatedProdImpact = 50;
+            if (deviationPct <= 0) {
+              this.productionImpact = 50;
+            } else if (deviationPct <= 15) {
+              this.productionImpact = Math.round(50 + (deviationPct * 1.33));
+            } else if (deviationPct <= 50) {
+              this.productionImpact = Math.round(70 + ((deviationPct - 15) * 0.51));
+            } else {
+              this.productionImpact = Math.min(99, Math.round(88 + Math.log10(deviationPct - 49) * 4.5));
+            }
 
-            this.productionImpact = calculatedProdImpact;
-            this.logisticImpact = 100 - calculatedProdImpact;
+            this.logisticImpact = 100 - this.productionImpact;
 
             const stageName = (data.rootCause as any).stageName || (this.stages.find(s => s.status === 'ANOMALİ')?.title) || 'Üretim Hattı';
             const equipmentName = data.rootCause.equipment || 'Ekipman';
@@ -395,6 +427,7 @@ export class DefectTrackerComponent implements AfterViewInit {
     });
   }
 
+  // GRAFİK DİZİSİNİ DÜZELTEN METOD
   updateChartData(): void {
     if (!this.chart || !this.selectedSensorTitle) return;
 
@@ -405,68 +438,48 @@ export class DefectTrackerComponent implements AfterViewInit {
     const matchThreshold = (this.savedThresholds.length > 0 ? this.savedThresholds : this.thresholdSensors)
       .find(t => t.name === this.selectedSensorTitle || t.id === this.selectedSensorTitle);
 
-    let targetVal = matchThreshold ? Number(matchThreshold.target) : 0;
-
-    if ((!targetVal || targetVal === 0) && activeSensor.delta) {
-      const devPct = parseFloat(activeSensor.delta.replace('%', '').replace('+', '')) || 0;
-      if (devPct !== 0) {
-        targetVal = Math.round((val / (1 + devPct / 100)) * 10) / 10;
-      } else {
-        targetVal = val;
-      }
-    }
+    let targetVal = matchThreshold ? Number(matchThreshold.target) : (this.defaultTargets[this.selectedSensorTitle] || 100);
 
     let critMin = matchThreshold ? Number(matchThreshold.criticalMin) : Math.round(targetVal * 0.85 * 10) / 10;
     let critMax = matchThreshold ? Number(matchThreshold.criticalMax) : Math.round(targetVal * 1.15 * 10) / 10;
 
     let realData: number[] = [];
-    const timePoints = 19;
 
+    // Zaman serisini düzgün map etme (Sayı mı Obje mi Kontrolü)
     if (activeSensor.timeSeries && activeSensor.timeSeries.length > 0) {
-      realData = activeSensor.timeSeries.map((item: any) =>
-        typeof item === 'number' ? item : (item.actualValue !== undefined ? item.actualValue : (item.value || 0))
-      );
-    } else {
-      const isAnomali = activeSensor.state === 'Anormal';
-      const sTitle = this.selectedSensorTitle.toLowerCase();
-      const titleHash = sTitle.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-      for (let i = 0; i < timePoints; i++) {
-        let currentVal = targetVal;
-        if (!isAnomali) {
-          const microNoise = Math.sin(i + titleHash) * (targetVal * 0.015);
-          currentVal = targetVal + microNoise;
-        } else {
-          currentVal = targetVal + ((val - targetVal) * (i / (timePoints - 1)));
-        }
-        realData.push(Math.round(currentVal * 10) / 10);
-      }
+      realData = activeSensor.timeSeries.map((item: any) => {
+        if (typeof item === 'number') return item;
+        if (item && item.actualValue !== undefined && item.actualValue !== null) return Number(item.actualValue);
+        if (item && item.value !== undefined && item.value !== null) return Number(item.value);
+        return 0;
+      });
     }
 
-    const isUpperViolated = realData.some(v => v > critMax) || val > critMax;
-    const isLowerViolated = realData.some(v => v < critMin) || val < critMin;
-    const isAnomali = isUpperViolated || isLowerViolated || activeSensor.state === 'Anormal';
+    // Eğer seri boş geldiyse düz çizgi çekmek yerine en azından noktayı koy
+    if (realData.length === 0) {
+      realData = Array(19).fill(val);
+    }
+
+    const isUpperViolated = realData.some(v => v > critMax);
+    const isLowerViolated = realData.some(v => v < critMin);
+    const isGraphAnomalous = isUpperViolated || isLowerViolated || activeSensor.state === 'Anormal';
 
     const datasets = this.chart.data.datasets;
 
     if (datasets && datasets.length >= 4) {
       datasets[0].data = realData;
-      (datasets[0] as any).borderColor = isAnomali ? '#ef4444' : '#10b981';
-      (datasets[0] as any).backgroundColor = isAnomali ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
+      (datasets[0] as any).borderColor = isGraphAnomalous ? '#ef4444' : '#10b981';
+      (datasets[0] as any).backgroundColor = isGraphAnomalous ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)';
 
       datasets[1].data = Array(realData.length).fill(targetVal);
 
-      if (isLowerViolated) {
-        datasets[2].data = Array(realData.length).fill(critMin);
-      } else if (!isUpperViolated) {
+      if (isLowerViolated || (!isUpperViolated && !isLowerViolated)) {
         datasets[2].data = Array(realData.length).fill(critMin);
       } else {
         datasets[2].data = [];
       }
 
-      if (isUpperViolated) {
-        datasets[3].data = Array(realData.length).fill(critMax);
-      } else if (!isLowerViolated) {
+      if (isUpperViolated || (!isUpperViolated && !isLowerViolated)) {
         datasets[3].data = Array(realData.length).fill(critMax);
       } else {
         datasets[3].data = [];
@@ -476,26 +489,16 @@ export class DefectTrackerComponent implements AfterViewInit {
     this.chart.update();
   }
 
-  // DİNANİK MODAL İŞLEMLERİ (Arayüzdeki İsimlerle Birebir Eşleşir)
   openThresholdModal(): void {
     if (this.savedThresholds && this.savedThresholds.length > 0) {
       this.thresholdSensors = JSON.parse(JSON.stringify(this.savedThresholds));
     } else if (this.allSensors && this.allSensors.length > 0) {
-      // Ekrana gelen kart verisinden BİREBİR dinamik threshold üretimi
       this.thresholdSensors = this.allSensors.map(sensor => {
-        const val = parseFloat(sensor.value) || 100;
-
-        let targetVal = val;
-        if (sensor.delta) {
-          const devPct = parseFloat(sensor.delta.replace('%', '').replace('+', '')) || 0;
-          if (devPct !== 0) {
-            targetVal = Math.round((val / (1 + devPct / 100)) * 10) / 10;
-          }
-        }
+        const targetVal = this.defaultTargets[sensor.title] || parseFloat(sensor.value) || 100;
 
         return {
           id: sensor.title,
-          name: sensor.title, // İSİM %100 BİREBİR EŞLEŞİR
+          name: sensor.title,
           unit: sensor.unit || 'değer',
           target: targetVal,
           criticalMin: Math.round(targetVal * 0.85 * 10) / 10,
@@ -553,7 +556,7 @@ export class DefectTrackerComponent implements AfterViewInit {
         let points: number[] = [];
         if (sensor.timeSeries && sensor.timeSeries.length > 0) {
           points = sensor.timeSeries.map((item: any) =>
-            typeof item === 'number' ? item : (item.actualValue !== undefined ? item.actualValue : (item.value || 0))
+            typeof item === 'number' ? item : (item.actualValue !== undefined ? Number(item.actualValue) : Number(item.value || 0))
           );
         } else {
           points = [parseFloat(sensor.value) || 0];
