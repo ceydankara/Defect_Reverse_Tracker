@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface DamageTicketRepository extends JpaRepository<DamageTicket, Long> {
     Optional<DamageTicket> findByTicketNumber(String ticketNumber);
     List<DamageTicket> findByBatchId(String batchId);
+
+    List<DamageTicket> findTop5ByOrderByCreatedAtDesc();
 }

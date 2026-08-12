@@ -13,4 +13,10 @@ public interface DefectRepository extends JpaRepository<Defect, Long> {
 
     @Query("SELECT d FROM Defect d WHERE d.coilId = :coilId")
     List<Defect> findByCoilId(@Param("coilId") String coilId);
+
+    @Query("SELECT d.defectCode, COUNT(d) FROM Defect d GROUP BY d.defectCode")
+    List<Object[]> countByDefectCode();
+
+    @Query("SELECT c.steelGrade, COUNT(d) FROM Defect d, Coil c WHERE d.coilId = c.coilId GROUP BY c.steelGrade")
+    List<Object[]> countBySteelGrade();
 }

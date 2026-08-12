@@ -2,10 +2,26 @@
 :host {
   display: block;
   background-color: #0b111e;
-  min-height: 100vh;
+  min-height: auto;
   color: #e2e8f0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   padding: 24px;
+}
+
+.module-header {
+  margin-bottom: 20px;
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+    color: #eef2f8;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: #7d8ca3;
+    font-size: 14px;
+  }
 }
 
 .tracker-container {

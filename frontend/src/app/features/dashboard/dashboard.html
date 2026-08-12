@@ -1,0 +1,112 @@
+<div class="dashboard-page">
+  <header class="page-header">
+    <div>
+      <h1>Ana Panel</h1>
+      <p>Üretim hasarları, aşama anomalileri ve kusur dağılımı özeti</p>
+    </div>
+    <a routerLink="/hasar-talep" class="cta-btn">+ Yeni Hasar Talebi</a>
+  </header>
+
+  @if (loading) {
+    <div class="loading">Veriler yükleniyor...</div>
+  }
+
+  @if (errorMessage) {
+    <div class="error">{{ errorMessage }}</div>
+  }
+
+  @if (stats) {
+    <section class="kpi-grid">
+      <article class="kpi-card">
+        <span>Toplam Bobin</span>
+        <strong>{{ stats.totalCoils }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Kayıtlı Kusur</span>
+        <strong>{{ stats.totalDefects }}</strong>
+      </article>
+      <article class="kpi-card">
+        <span>Hasar Talebi</span>
+        <strong>{{ stats.totalTickets }}</strong>
+      </article>
+      <article class="kpi-card accent-red">
+        <span>Üretim Anomalisi</span>
+        <strong>{{ stats.productionAnomalyCount }}</strong>
+      </article>
+      <article class="kpi-card accent-purple">
+        <span>Lojistik Vakası</span>
+        <strong>{{ stats.logisticsCaseCount }}</strong>
+      </article>
+    </section>
+
+    <section class="charts-grid">
+      <article class="panel">
+        <h2>En Çok Hasar Tespit Edilen Aşamalar</h2>
+        <div class="chart-wrap">
+          <canvas #stageChart></canvas>
+        </div>
+        <ul class="rank-list">
+          @for (item of stats.anomaliesByStage; track item.label) {
+            <li>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.count }} anomali</strong>
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>En Sık Görülen Kusur Kodları</h2>
+        <div class="chart-wrap">
+          <canvas #defectChart></canvas>
+        </div>
+        <ul class="rank-list">
+          @for (item of stats.defectsByCode; track item.label) {
+            <li>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.count }} kayıt</strong>
+            </li>
+          }
+        </ul>
+      </article>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="panel">
+        <h2>Çelik Kalitesine Göre Kusurlu Ürünler</h2>
+        <ul class="rank-list full">
+          @for (item of stats.defectsBySteelGrade; track item.label) {
+            <li>
+              <span>{{ item.label }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="(item.count / stats.totalDefects) * 100"></div>
+              </div>
+              <strong>{{ item.count }}</strong>
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h2>Son Hasar Talepleri</h2>
+        @if (stats.recentTickets.length === 0) {
+          <p class="empty">Henüz talep oluşturulmamış.</p>
+        } @else {
+          <div class="ticket-list">
+            @for (ticket of stats.recentTickets; track ticket.ticketNumber) {
+              <div class="ticket-item">
+                <div class="ticket-top">
+                  <strong>{{ ticket.ticketNumber }}</strong>
+                  <span>{{ ticket.batchId }}</span>
+                </div>
+                <div class="ticket-meta">
+                  {{ ticket.defectType }} · {{ ticket.department }} · {{ ticket.reporterName }}
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </article>
+    </section>
+  }
+</div>

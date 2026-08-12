@@ -1,4 +1,10 @@
 <div class="tracker-container">
+  <header class="module-header">
+    <div>
+      <h1>Hasar Talep & Kök Neden Analizi</h1>
+      <p>Bobin bilgilerini girin, talep oluşturun ve analizi başlatın.</p>
+    </div>
+  </header>
 
   <!-- A) AŞAMA 1: HASAR TALEP FORMU (FORM DOLDURULMADAN ÖNCE GÖRÜNÜR) -->
   <div *ngIf="!isFormSubmitted" class="panel-box ticket-form-card">
@@ -34,7 +40,7 @@
       <div class="form-grid-2">
         <div class="input-group">
           <label>Bobin ID *</label>
-          <input type="text" [(ngModel)]="batchId" placeholder="Örn: BOBIN-2026-9043" class="dark-input" />
+          <input type="text" [(ngModel)]="batchId" placeholder="Örn: BOBIN-2026-9041" class="dark-input" />
         </div>
         <div class="input-group">
           <label>Hasar Nerede Fark Edildi?</label>
@@ -183,7 +189,7 @@
           <div class="header-titles">
             <div class="panel-title-sub">HASAR KAYNAĞI SINIFLANDIRICI</div>
             <div class="panel-title-main">
-              Hasar Kaynağı Tespit Edildi — <span class="highlight-text">{{ rootCauseEquipment }}</span>
+              {{ headline || ('Hasar Kaynağı Tespit Edildi — ' + rootCauseEquipment) }}
             </div>
           </div>
         </div>
