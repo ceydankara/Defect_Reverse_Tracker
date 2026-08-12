@@ -1,6 +1,7 @@
 package com.example.defecttracker.dto;
 
 import lombok.Data;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -8,11 +9,15 @@ import java.util.List;
 public class AnalysisResponseDto {
     private String coilId;
     private String defectCode;
+    private String steelGrade;
+    private String classificationType;
+    private String headline;
 
     private List<StageDto> stages;
     private RootCauseDto rootCause;
     private List<SensorSummaryDto> sensorSummaries;
     private List<TimeSeriesReadingDto> timeSeriesData;
+    private List<String> evidenceIndicators;
 
     @Data
     public static class StageDto {
@@ -31,18 +36,22 @@ public class AnalysisResponseDto {
         private Integer productionImpactPct;
         private Integer logisticImpactPct;
         private String recommendedAction;
+        private String stageName;
     }
 
     @Data
     public static class SensorSummaryDto {
         private String sensorKey;
+        private String stageName;
+        private String unit;
         private BigDecimal lastActualValue;
         private BigDecimal targetValue;
-        private String stageName;
         private BigDecimal minLimit;
         private BigDecimal maxLimit;
         private String status;
         private BigDecimal percentageDeviation;
+        private List<BigDecimal> sparklineValues;
+        private List<TimeSeriesReadingDto> readings;
     }
 
     @Data

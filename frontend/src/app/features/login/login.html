@@ -1,0 +1,45 @@
+<div class="login-page">
+  <div class="login-panel">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Defect Reverse-Tracker</h1>
+        <p>Üretim Hasar & Kök Neden Analiz Sistemi</p>
+      </div>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="login-form">
+      <h2>Yetkili Giriş</h2>
+
+      @if (!backendOnline) {
+        <div class="backend-warn">
+          Backend servisi kapalı görünüyor. Önce Spring Boot'u başlatın:
+          <code>.\mvnw.cmd spring-boot:run</code>
+        </div>
+      }
+
+      <label>Kullanıcı Adı</label>
+      <input type="text" [(ngModel)]="username" name="username" placeholder="admin" autocomplete="username" />
+
+      <label>Şifre</label>
+      <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" autocomplete="current-password" />
+
+      @if (errorMessage) {
+        <div class="error">{{ errorMessage }}</div>
+      }
+
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Giriş yapılıyor...' : 'Sisteme Giriş Yap' }}
+      </button>
+    </form>
+
+    <div class="demo-box">
+      <span>Demo hesaplar:</span>
+      @for (acc of demoAccounts; track acc.user) {
+        <button type="button" class="demo-btn" (click)="fillDemo(acc)">
+          {{ acc.user }} / {{ acc.role }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

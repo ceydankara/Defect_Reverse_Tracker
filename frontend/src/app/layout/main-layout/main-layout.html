@@ -1,0 +1,35 @@
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo"></div>
+      <div>
+        <strong>Defect Reverse-Tracker</strong>
+        <small>v2.5.0</small>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="/dashboard" routerLinkActive="active">
+        <span class="icon">📊</span> Ana Panel
+      </a>
+      <a routerLink="/hasar-talep" routerLinkActive="active">
+        <span class="icon">🔍</span> Hasar Talep & Analiz
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-card">
+        <div class="avatar">{{ auth.user()?.fullName?.charAt(0) || 'U' }}</div>
+        <div>
+          <strong>{{ auth.user()?.fullName }}</strong>
+          <span>{{ auth.user()?.role }}</span>
+        </div>
+      </div>
+      <button type="button" class="logout-btn" (click)="logout()">Çıkış Yap</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>
