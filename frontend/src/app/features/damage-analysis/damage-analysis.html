@@ -39,6 +39,9 @@
       <div class="ticket-info-group">
         <span class="t-badge">ANALİZ</span>
         <span class="t-item">BOBİN: <strong>{{ batchId }}</strong></span>
+        @if (currentSteelGrade) {
+          <span class="t-item grade-tag">ÇELİK: <strong>{{ currentSteelGrade }}</strong></span>
+        }
       </div>
       <div class="ticket-actions">
         @if (auth.canGradeQuality()) {
@@ -63,6 +66,12 @@
           </div>
         }
       </div>
+      @if (hasThresholdAlarmsOnly()) {
+        <div class="threshold-notice">
+          Özel alarm eşiği ihlali var — hasar kaynağı analizi <strong>lojistik / dış etken</strong> olarak sınıflandırıldı.
+          Üretim hattı kartları yalnızca gerçek proses anomalilerini gösterir.
+        </div>
+      }
     </div>
 
     <div class="analysis-details-fade-in">
@@ -105,6 +114,12 @@
               <span>{{ selectedSensorStage }} · 0 → 180 sn</span>
             </div>
           </div>
+          <div class="chart-legend-row">
+            <span class="leg-item leg-actual">— Gerçek değer</span>
+            <span class="leg-item leg-target">- - Hedef (normal)</span>
+            <span class="leg-item leg-warning">- - Uyarı bandı</span>
+            <span class="leg-item leg-critical">- - Kritik eşik</span>
+          </div>
           <div class="canvas-wrapper"><canvas #sensorChartCanvas></canvas></div>
         </div>
 
@@ -112,10 +127,15 @@
           <div class="panel-title">SENSÖR DEĞERLERİ — {{ selectedStageName?.toUpperCase() }}</div>
           <div class="sensor-grid">
             @for (sensor of filteredSensors; track sensor.title) {
-              <div class="sensor-card" [class.sensor-card-anormal]="sensor.state === 'Anormal'"
+              <div class="sensor-card"
+                   [class.sensor-card-anormal]="isProductionAnomaly(sensor)"
+                   [class.sensor-card-threshold]="isThresholdAlarm(sensor)"
                    (click)="onSelectSensorCard(sensor)">
                 <div class="sensor-header">
                   <span class="sensor-title">{{ sensor.title }}</span>
+                  @if (isThresholdAlarm(sensor)) {
+                    <span class="threshold-tag">Eşik alarmı</span>
+                  }
                   <span class="sensor-delta">{{ sensor.delta }}</span>
                 </div>
                 <div class="sensor-value">{{ sensor.value }} <small>{{ sensor.unit }}</small></div>
@@ -128,15 +148,128 @@
   }
 
   @if (isThresholdModalOpen) {
-    <div class="modal-overlay">
-      <div class="modal-container">
+    <div class="modal-overlay" (click)="closeThresholdModal()">
+      <div class="modal-container threshold-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3 class="modal-title">Alarm Eşiği Editörü</h3>
-          <button class="btn-close" (click)="closeThresholdModal()">✕</button>
+          <div>
+            <h3 class="modal-title">Alarm Eşiği Editörü</h3>
+            <p class="modal-subtitle">Çelik kalitesi seçildiğinde eşikler otomatik güncellenir</p>
+          </div>
+          <button type="button" class="btn-close" (click)="closeThresholdModal()">✕</button>
         </div>
+
+        <div class="grade-selector-row">
+          <label for="steelGradeSelect">Çelik Kalitesi</label>
+          <select id="steelGradeSelect" class="grade-select" [(ngModel)]="selectedSteelGrade" (ngModelChange)="onSteelGradeChange()">
+            @for (grade of availableSteelGrades; track grade) {
+              <option [value]="grade">{{ grade }}</option>
+            }
+          </select>
+          @if (selectedGradePresetLabel) {
+            <span class="grade-hint preset-desc">{{ selectedGradePresetLabel }}</span>
+          }
+          @if (hasSavedProfileForSelectedGrade) {
+            <span class="profile-badge saved">Kayıtlı profil</span>
+          } @else {
+            <span class="profile-badge draft">Otomatik eşik</span>
+          }
+        </div>
+
+        <div class="tab-row">
+          @for (stage of thresholdStages; track stage) {
+            <button type="button" class="tab-btn" [class.active]="activeThresholdStage === stage"
+                    (click)="selectThresholdStage(stage)">
+              {{ stage }}
+            </button>
+          }
+        </div>
+
+        <div class="legend-row">
+          <div class="legend-item"><span class="dot critical"></span> Kritik eşik</div>
+          <div class="legend-item"><span class="dot warning"></span> Uyarı bandı</div>
+          <div class="legend-item"><span class="dot target"></span> Hedef değer</div>
+        </div>
+
+        @if (thresholdSaveMessage) {
+          <div class="threshold-toast">{{ thresholdSaveMessage }}</div>
+        }
+
+        <div class="modal-body">
+          @if (filteredThresholdSensors.length === 0) {
+            <p class="empty-threshold">Bu aşama için sensör eşiği tanımlı değil. Önce analiz başlatın veya başka bir aşama seçin.</p>
+          }
+          @for (sensor of filteredThresholdSensors; track sensor.id) {
+            <div class="threshold-card" [class.threshold-invalid]="isThresholdInvalid(sensor)">
+              <div class="sensor-card-header">
+                <strong>{{ sensor.name }}</strong>
+                <span class="sensor-target">Hedef: {{ sensor.target }} {{ sensor.unit }}</span>
+              </div>
+              @if (isThresholdInvalid(sensor)) {
+                <div class="threshold-invalid-msg">Hedef değer kırmızı kritik çizgilerin arasında olmalı. Kayıtta otomatik düzenlenir.</div>
+              }
+
+              <div class="zone-visual">
+                <div class="zone-track">
+                  <div class="zone-warning"
+                       [style.margin-left.%]="zoneOffset(sensor, sensor.warningMin)"
+                       [style.width.%]="zoneWidth(sensor, sensor.warningMin, sensor.warningMax)"></div>
+                  <div class="zone-target"
+                       [style.margin-left.%]="zoneOffset(sensor, sensor.target - (sensor.target * 0.02))"
+                       [style.width.%]="zoneWidth(sensor, sensor.target - (sensor.target * 0.02), sensor.target + (sensor.target * 0.02))"></div>
+                </div>
+                <div class="zone-labels">
+                  <span>{{ sensor.criticalMin }}</span>
+                  <span>{{ sensor.criticalMax }}</span>
+                </div>
+              </div>
+
+              <div class="inputs-grid">
+                <div class="input-item">
+                  <label>Hedef</label>
+                  <div class="input-with-unit">
+                    <input type="number" step="0.1" [(ngModel)]="sensor.target" (blur)="onThresholdFieldChange(sensor)" />
+                    <span>{{ sensor.unit }}</span>
+                  </div>
+                </div>
+                <div class="input-item critical">
+                  <label>Kritik Alt</label>
+                  <div class="input-with-unit">
+                    <input type="number" step="0.1" [(ngModel)]="sensor.criticalMin" (blur)="onThresholdFieldChange(sensor)" />
+                    <span>{{ sensor.unit }}</span>
+                  </div>
+                </div>
+                <div class="input-item critical">
+                  <label>Kritik Üst</label>
+                  <div class="input-with-unit">
+                    <input type="number" step="0.1" [(ngModel)]="sensor.criticalMax" (blur)="onThresholdFieldChange(sensor)" />
+                    <span>{{ sensor.unit }}</span>
+                  </div>
+                </div>
+                <div class="input-item warning">
+                  <label>Uyarı Alt</label>
+                  <div class="input-with-unit">
+                    <input type="number" step="0.1" [(ngModel)]="sensor.warningMin" (blur)="onThresholdFieldChange(sensor)" />
+                    <span>{{ sensor.unit }}</span>
+                  </div>
+                </div>
+                <div class="input-item warning">
+                  <label>Uyarı Üst</label>
+                  <div class="input-with-unit">
+                    <input type="number" step="0.1" [(ngModel)]="sensor.warningMax" (blur)="onThresholdFieldChange(sensor)" />
+                    <span>{{ sensor.unit }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
         <div class="modal-footer">
-          <button class="btn-link" (click)="resetThresholds()">Sıfırla</button>
-          <button class="btn-primary" (click)="saveThresholds()">Kaydet</button>
+          <button type="button" class="btn-link" (click)="resetThresholds()">Bu Kaliteyi Sıfırla</button>
+          <div class="footer-actions">
+            <button type="button" class="btn-secondary" (click)="closeThresholdModal()">İptal</button>
+            <button type="button" class="btn-primary" (click)="saveThresholds()">Profili Kaydet</button>
+          </div>
         </div>
       </div>
     </div>

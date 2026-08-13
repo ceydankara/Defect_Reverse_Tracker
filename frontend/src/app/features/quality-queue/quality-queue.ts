@@ -93,6 +93,8 @@ export class QualityQueueComponent implements OnInit {
     this.filter = filter;
     this.selectedTicket = null;
     this.qualityGrading = null;
+    this.analysis = null;
+    this.analysisHeadline = '';
     this.loadTickets();
   }
 
@@ -100,8 +102,18 @@ export class QualityQueueComponent implements OnInit {
     this.selectedTicket = ticket;
     this.gradeConfirmed = ticket.gradeStatus === 'DECIDED';
     this.gradeNotes = '';
-    this.loadingDetail = true;
     this.errorMessage = '';
+
+    if (this.isDecidedView(ticket)) {
+      this.loadingDetail = false;
+      this.analysis = null;
+      this.qualityGrading = null;
+      this.analysisHeadline = '';
+      this.selectedFinalGrade = ticket.finalGrade ?? '';
+      return;
+    }
+
+    this.loadingDetail = true;
 
     this.defectService.getTicketQueueDetail(ticket.ticketNumber).subscribe({
       next: (detail) => {
@@ -190,6 +202,18 @@ export class QualityQueueComponent implements OnInit {
 
   hasMultipleTickets(ticket: TicketQueueItem): boolean {
     return (ticket.relatedTicketCount ?? 1) > 1;
+  }
+
+  isDecidedView(ticket: TicketQueueItem | null = this.selectedTicket): boolean {
+    return ticket?.gradeStatus === 'DECIDED';
+  }
+
+  gradeBadgeClass(grade?: string): string {
+    switch (grade) {
+      case 'CUSTOMER': return 'grade-customer';
+      case 'SCRAP': return 'grade-scrap';
+      default: return 'grade-second';
+    }
   }
 
   openFullAnalysis(): void {

@@ -437,6 +437,10 @@
   color: #f8fafc;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 
+  &.threshold-modal {
+    width: min(860px, 94vw);
+  }
+
   .modal-header {
     display: flex; justify-content: space-between; align-items: flex-start;
     .modal-title { margin: 0; font-size: 1.2rem; font-weight: 700; color: #fff; }
@@ -458,13 +462,145 @@
     .dot { width: 10px; height: 10px; border-radius: 50%; }
     .dot.warning { background: #d97706; }
     .dot.critical { background: #dc2626; }
+    .dot.target { background: #10b981; }
+  }
+
+  .grade-selector-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+
+    label {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .grade-select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      min-width: 140px;
+      font-weight: 600;
+    }
+
+    .grade-hint {
+      font-size: 0.8rem;
+      color: #64748b;
+
+      strong { color: #38bdf8; }
+
+      &.preset-desc {
+        flex: 1 1 100%;
+        color: #94a3b8;
+        font-style: italic;
+      }
+    }
+
+    .profile-badge {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+
+      &.saved {
+        background: rgba(16, 185, 129, 0.12);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+
+      &.draft {
+        background: rgba(245, 158, 11, 0.12);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+      }
+    }
+  }
+
+  .threshold-toast {
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #34d399;
+    font-size: 0.82rem;
+  }
+
+  .empty-threshold {
+    color: #64748b;
+    font-size: 0.88rem;
+    text-align: center;
+    padding: 24px 12px;
   }
 
   .modal-body {
-    overflow-y: auto; flex: 1; padding-right: 6px;
+    overflow-y: auto; flex: 1; padding-right: 6px; margin-top: 8px;
     .threshold-card {
       background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 16px;
-      .sensor-card-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem; }
+
+      &.threshold-invalid {
+        border: 1px solid rgba(245, 158, 11, 0.45);
+      }
+
+      .threshold-invalid-msg {
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: rgba(245, 158, 11, 0.1);
+        color: #fbbf24;
+        font-size: 0.78rem;
+      }
+
+      .sensor-card-header {
+        display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem;
+        .sensor-target { color: #64748b; font-size: 0.82rem; }
+      }
+
+      .zone-visual {
+        margin-bottom: 14px;
+      }
+
+      .zone-track {
+        height: 14px;
+        background: rgba(220, 38, 38, 0.25);
+        border-radius: 999px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .zone-warning {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        background: rgba(217, 119, 6, 0.55);
+      }
+
+      .zone-target {
+        position: absolute;
+        top: 2px;
+        height: calc(100% - 4px);
+        background: rgba(16, 185, 129, 0.85);
+        border-radius: 999px;
+        min-width: 4px;
+      }
+
+      .zone-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        font-size: 0.72rem;
+        color: #64748b;
+      }
 
       .zone-bar {
         height: 24px; background: #0f172a; border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; overflow: hidden; position: relative;
@@ -472,7 +608,8 @@
       }
 
       .inputs-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+        @media (max-width: 720px) { grid-template-columns: 1fr 1fr; }
         .input-item {
           label { display: block; font-size: 0.75rem; margin-bottom: 4px; }
           &.critical label { color: #f87171; }
@@ -552,6 +689,23 @@
     }
   }
 
+  .chart-legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+
+    .leg-item {
+      color: #94a3b8;
+
+      &.leg-actual { color: #f87171; }
+      &.leg-target { color: #38bdf8; }
+      &.leg-warning { color: #fbbf24; }
+      &.leg-critical { color: #fca5a5; }
+    }
+  }
+
   .canvas-wrapper {
     position: relative;
     height: 260px;
@@ -580,6 +734,33 @@
 /* 1. Anormal Sensörler (Sabit Kırmızı Kutu) */
 .sensor-card-anormal {
   border: 1px solid #ef4444 !important;
+}
+
+.sensor-card-threshold {
+  border: 1px solid #f59e0b !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15);
+}
+
+.threshold-notice {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  line-height: 1.45;
+
+  strong { color: #fde68a; }
+}
+
+.threshold-tag {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  margin-right: 6px;
 }
 
 /* 2. Seçili Mavi Kart (Normal Sensör Seçildiğinde) */
@@ -748,6 +929,8 @@
       color: #94a3b8;
       font-size: 0.85rem;
       strong { color: #f8fafc; }
+
+      &.grade-tag strong { color: #fbbf24; }
     }
   }
   .btn-new-ticket {

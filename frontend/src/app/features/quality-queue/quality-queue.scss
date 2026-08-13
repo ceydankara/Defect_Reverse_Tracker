@@ -507,3 +507,82 @@
     cursor: not-allowed;
   }
 }
+
+.decided-summary {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.decided-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+
+  h2 {
+    margin: 6px 0 0;
+    color: #eef2f8;
+    font-size: 1.25rem;
+  }
+}
+
+.decided-badge {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+
+  &.grade-customer {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #34d399;
+  }
+
+  &.grade-second {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+  }
+
+  &.grade-scrap {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+  }
+}
+
+.decided-grid {
+  margin-bottom: 16px;
+}
+
+.decided-defects-list {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.decided-defect-row {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  .defect-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+
+    strong {
+      color: #eef2f8;
+    }
+  }
+
+  .defect-meta {
+    color: #94a3b8;
+    font-size: 0.82rem;
+  }
+}

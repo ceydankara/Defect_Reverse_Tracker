@@ -1,14 +1,24 @@
 <div class="dashboard-page">
   <header class="page-header">
-    <div>
+    <div class="header-text">
+      <div class="eyebrow">DEFECT REVERSE-TRACKER</div>
       <h1>Ana Panel</h1>
-      <p>Üretim hasarları, aşama anomalileri ve kusur dağılımı özeti</p>
+      <p>Üretim hasarları, kalite kararları ve proses anomalileri — gerçek zamanlı özet</p>
     </div>
-    <a routerLink="/hasar-talep" class="cta-btn">+ Yeni Hasar Talebi</a>
+    <div class="header-actions">
+      <div class="live-pill">
+        <span class="live-dot"></span>
+        Canlı veri
+      </div>
+      <a routerLink="/hasar-talep" class="cta-btn">+ Yeni Hasar Talebi</a>
+    </div>
   </header>
 
   @if (loading) {
-    <div class="loading">Veriler yükleniyor...</div>
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Panel verileri yükleniyor...</span>
+    </div>
   }
 
   @if (errorMessage) {
@@ -17,90 +27,234 @@
 
   @if (stats) {
     <section class="kpi-grid">
-      <article class="kpi-card">
-        <span>Toplam Bobin</span>
-        <strong>{{ stats.totalCoils }}</strong>
+      <article class="kpi-card kpi-blue">
+        <div class="kpi-icon">⬡</div>
+        <div class="kpi-body">
+          <span>Toplam Bobin</span>
+          <strong>{{ stats.totalCoils }}</strong>
+          <small>Sistemde kayıtlı</small>
+        </div>
       </article>
-      <article class="kpi-card">
-        <span>Kayıtlı Kusur</span>
-        <strong>{{ stats.totalDefects }}</strong>
+      <article class="kpi-card kpi-cyan">
+        <div class="kpi-icon">📋</div>
+        <div class="kpi-body">
+          <span>Hasar Talebi</span>
+          <strong>{{ stats.totalTickets }}</strong>
+          <small>Toplam bildirim</small>
+        </div>
       </article>
-      <article class="kpi-card">
-        <span>Hasar Talebi</span>
-        <strong>{{ stats.totalTickets }}</strong>
+      <article class="kpi-card kpi-amber">
+        <div class="kpi-icon">⏳</div>
+        <div class="kpi-body">
+          <span>Bekleyen Kalite</span>
+          <strong>{{ stats.pendingQualityCount }}</strong>
+          <small>Karar bekleyen bobin</small>
+        </div>
       </article>
-      <article class="kpi-card accent-red">
-        <span>Üretim Anomalisi</span>
-        <strong>{{ stats.productionAnomalyCount }}</strong>
+      <article class="kpi-card kpi-green">
+        <div class="kpi-icon">✓</div>
+        <div class="kpi-body">
+          <span>Karar Verildi</span>
+          <strong>{{ stats.decidedQualityCount }}</strong>
+          <small>Sınıflandırılmış bobin</small>
+        </div>
       </article>
-      <article class="kpi-card accent-purple">
-        <span>Lojistik Vakası</span>
-        <strong>{{ stats.logisticsCaseCount }}</strong>
+      <article class="kpi-card kpi-red">
+        <div class="kpi-icon">⚠</div>
+        <div class="kpi-body">
+          <span>Üretim Anomalisi</span>
+          <strong>{{ stats.productionAnomalyCount }}</strong>
+          <small>Aşama bazlı sapma</small>
+        </div>
+      </article>
+      <article class="kpi-card kpi-purple">
+        <div class="kpi-icon">🚚</div>
+        <div class="kpi-body">
+          <span>Lojistik Vakası</span>
+          <strong>{{ stats.logisticsCaseCount }}</strong>
+          <small>Dış etken profili</small>
+        </div>
       </article>
     </section>
 
+    <section class="quick-links">
+      <a routerLink="/hasar-talep" class="quick-card">
+        <strong>Hasar Talebi Oluştur</strong>
+        <span>Yeni bobin bildirimi aç</span>
+      </a>
+      @if (auth.canGradeQuality()) {
+        <a routerLink="/kalite-siniflandirma" [queryParams]="{ status: 'pending' }" class="quick-card accent">
+          <strong>Kalite Kuyruğu</strong>
+          <span>{{ stats.pendingQualityCount }} bobin bekliyor</span>
+        </a>
+      }
+      @if (auth.canAnalyze()) {
+        <a routerLink="/hasar-analiz" class="quick-card">
+          <strong>Hasar Analizi</strong>
+          <span>Kök neden ve sensör incelemesi</span>
+        </a>
+      }
+      @if (auth.canGradeQuality()) {
+        <a routerLink="/kalite-siniflandirma" [queryParams]="{ status: 'decided' }" class="quick-card">
+          <strong>Karar Verilenler</strong>
+          <span>{{ stats.decidedQualityCount }} bobin arşivi</span>
+        </a>
+      }
+    </section>
+
     <section class="charts-grid">
-      <article class="panel">
-        <h2>En Çok Hasar Tespit Edilen Aşamalar</h2>
+      <article class="panel panel-highlight">
+        <div class="panel-head">
+          <div>
+            <div class="panel-tag">PROSES</div>
+            <h2>Aşama Anomalileri</h2>
+          </div>
+          <span class="panel-stat">{{ stats.productionAnomalyCount }}</span>
+        </div>
         <div class="chart-wrap">
           <canvas #stageChart></canvas>
         </div>
-        <ul class="rank-list">
-          @for (item of stats.anomaliesByStage; track item.label) {
-            <li>
-              <span>{{ item.label }}</span>
-              <strong>{{ item.count }} anomali</strong>
-            </li>
-          }
-        </ul>
+        @if (stats.anomaliesByStage.length === 0) {
+          <p class="empty">Henüz aşama anomalisi kaydı yok.</p>
+        } @else {
+          <ul class="rank-list">
+            @for (item of stats.anomaliesByStage; track item.label; let i = $index) {
+              <li>
+                <span class="rank-no">{{ i + 1 }}</span>
+                <span class="rank-label">{{ item.label }}</span>
+                <strong>{{ item.count }}</strong>
+              </li>
+            }
+          </ul>
+        }
       </article>
 
       <article class="panel">
-        <h2>En Sık Görülen Kusur Kodları</h2>
+        <div class="panel-head">
+          <div>
+            <div class="panel-tag">KAYNAK</div>
+            <h2>Üretim vs Lojistik</h2>
+          </div>
+        </div>
+        <div class="chart-wrap doughnut-wrap">
+          <canvas #sourceChart></canvas>
+        </div>
+        <div class="source-legend">
+          <div class="legend-item">
+            <span class="dot prod"></span>
+            <span>Üretim Anomalisi</span>
+            <strong>{{ stats.productionAnomalyCount }}</strong>
+          </div>
+          <div class="legend-item">
+            <span class="dot log"></span>
+            <span>Lojistik Vakası</span>
+            <strong>{{ stats.logisticsCaseCount }}</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-tag">KUSUR</div>
+            <h2>Kusur Kodları</h2>
+          </div>
+        </div>
         <div class="chart-wrap">
           <canvas #defectChart></canvas>
         </div>
-        <ul class="rank-list">
-          @for (item of stats.defectsByCode; track item.label) {
-            <li>
-              <span>{{ item.label }}</span>
-              <strong>{{ item.count }} kayıt</strong>
-            </li>
-          }
-        </ul>
+        @if (stats.defectsByCode.length === 0) {
+          <p class="empty">Kusur kodu verisi yok.</p>
+        } @else {
+          <ul class="rank-list compact">
+            @for (item of stats.defectsByCode; track item.label) {
+              <li>
+                <span class="rank-label mono">{{ formatDefectCode(item.label) }}</span>
+                <strong>{{ item.count }}</strong>
+              </li>
+            }
+          </ul>
+        }
       </article>
+
+      @if (stats.qualityByGrade.length > 0) {
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-tag">KALİTE</div>
+              <h2>Karar Dağılımı</h2>
+            </div>
+          </div>
+          <div class="chart-wrap doughnut-wrap">
+            <canvas #gradeChart></canvas>
+          </div>
+          <ul class="grade-chips">
+            @for (item of stats.qualityByGrade; track item.label) {
+              <li [class]="gradeChipClass(item.label)">
+                {{ item.label }} <strong>{{ item.count }}</strong>
+              </li>
+            }
+          </ul>
+        </article>
+      }
     </section>
 
     <section class="bottom-grid">
       <article class="panel">
-        <h2>Çelik Kalitesine Göre Kusurlu Ürünler</h2>
-        <ul class="rank-list full">
-          @for (item of stats.defectsBySteelGrade; track item.label) {
-            <li>
-              <span>{{ item.label }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="(item.count / stats.totalDefects) * 100"></div>
-              </div>
-              <strong>{{ item.count }}</strong>
-            </li>
-          }
-        </ul>
+        <div class="panel-head">
+          <div>
+            <div class="panel-tag">ÇELİK GRADE</div>
+            <h2>Kaliteye Göre Kusurlu Ürünler</h2>
+          </div>
+        </div>
+        @if (stats.defectsBySteelGrade.length === 0) {
+          <p class="empty">Çelik grade verisi yok.</p>
+        } @else {
+          <ul class="steel-list">
+            @for (item of stats.defectsBySteelGrade; track item.label) {
+              <li>
+                <div class="steel-top">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.count }}</strong>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" [style.width.%]="barPercent(item.count, stats.totalDefects)"></div>
+                </div>
+              </li>
+            }
+          </ul>
+        }
       </article>
 
       <article class="panel">
-        <h2>Son Hasar Talepleri</h2>
+        <div class="panel-head">
+          <div>
+            <div class="panel-tag">AKIŞ</div>
+            <h2>Son Hasar Talepleri</h2>
+          </div>
+          <a routerLink="/kalite-siniflandirma" class="panel-link">Tümünü gör →</a>
+        </div>
         @if (stats.recentTickets.length === 0) {
           <p class="empty">Henüz talep oluşturulmamış.</p>
         } @else {
           <div class="ticket-list">
             @for (ticket of stats.recentTickets; track ticket.ticketNumber) {
               <div class="ticket-item">
-                <div class="ticket-top">
-                  <strong>{{ ticket.ticketNumber }}</strong>
-                  <span>{{ ticket.batchId }}</span>
-                </div>
-                <div class="ticket-meta">
-                  {{ ticket.defectType }} · {{ ticket.department }} · {{ ticket.reporterName }}
+                <div class="ticket-icon">📄</div>
+                <div class="ticket-body">
+                  <div class="ticket-top">
+                    <strong>{{ ticket.ticketNumber }}</strong>
+                    <span class="coil-id">{{ ticket.batchId }}</span>
+                  </div>
+                  <div class="ticket-meta">
+                    {{ ticket.defectType }} · {{ ticket.department }}
+                  </div>
+                  <div class="ticket-footer">
+                    <span>{{ ticket.reporterName }}</span>
+                    @if (ticket.createdAt) {
+                      <span>{{ formatDate(ticket.createdAt) }}</span>
+                    }
+                  </div>
                 </div>
               </div>
             }

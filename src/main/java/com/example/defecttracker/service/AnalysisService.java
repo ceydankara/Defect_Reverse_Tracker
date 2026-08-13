@@ -88,7 +88,7 @@ public class AnalysisService {
                 .orElse(null);
 
         response.setSensorSummaries(summaries);
-        response.setRootCause(buildRootCause(coilId, hasProductionAnomaly, anomalyStage, primarySensor));
+        response.setRootCause(buildRootCause(coilId, hasProductionAnomaly, anomalyStage, primarySensor, summaries));
         response.setHeadline(buildHeadline(hasProductionAnomaly, anomalyStage, primarySensor));
         response.setEvidenceIndicators(buildEvidence(stages, summaries, hasProductionAnomaly, response.getRootCause()));
 
@@ -184,12 +184,90 @@ public class AnalysisService {
             String coilId,
             boolean hasProductionAnomaly,
             ProcessStage anomalyStage,
-            AnalysisResponseDto.SensorSummaryDto primarySensor) {
+            AnalysisResponseDto.SensorSummaryDto primarySensor,
+            List<AnalysisResponseDto.SensorSummaryDto> summaries) {
 
-        return rootCauseResultRepository.findByCoilId(coilId)
+        AnalysisResponseDto.RootCauseDto dto = rootCauseResultRepository.findByCoilId(coilId)
                 .map(rc -> toRootCauseDto(rc, anomalyStage))
                 .orElseGet(() -> fallbackRootCause(hasProductionAnomaly, anomalyStage, primarySensor));
+
+        ImpactSplit impact = computeImpactSplit(coilId, hasProductionAnomaly, primarySensor, summaries);
+        dto.setProductionImpactPct(impact.productionPct());
+        dto.setLogisticImpactPct(impact.logisticPct());
+        return dto;
     }
+
+    /**
+     * Üretim / lojistik yüzdeleri her bobinin sensör sapma profiline göre hesaplanır.
+     * Veritabanındaki sabit 85/15 veya 90/10 değerleri kullanılmaz.
+     */
+    private ImpactSplit computeImpactSplit(
+            String coilId,
+            boolean hasProductionAnomaly,
+            AnalysisResponseDto.SensorSummaryDto primarySensor,
+            List<AnalysisResponseDto.SensorSummaryDto> summaries) {
+
+        if (summaries.isEmpty()) {
+            return new ImpactSplit(50, 50);
+        }
+
+        double maxAbsDev = summaries.stream()
+                .mapToDouble(s -> s.getPercentageDeviation().abs().doubleValue())
+                .max()
+                .orElse(0.0);
+        double avgAbsDev = summaries.stream()
+                .mapToDouble(s -> s.getPercentageDeviation().abs().doubleValue())
+                .average()
+                .orElse(0.0);
+        int coilJitter = Math.abs(coilId.hashCode() % 9) - 4;
+
+        if (!hasProductionAnomaly) {
+            long nominalCount = summaries.stream().filter(s -> "OK".equals(s.getStatus())).count();
+            double nominalRatio = nominalCount / (double) summaries.size();
+            double prod = 5.0
+                    + avgAbsDev * 1.1
+                    + maxAbsDev * 0.45
+                    + (1.0 - nominalRatio) * 12.0
+                    + coilJitter * 0.6;
+            int production = clampInt((int) Math.round(prod), 5, 32);
+            return new ImpactSplit(production, 100 - production);
+        }
+
+        List<AnalysisResponseDto.SensorSummaryDto> anomalous = summaries.stream()
+                .filter(s -> "ANOMALI".equals(s.getStatus()))
+                .toList();
+
+        double primaryDev = primarySensor != null
+                ? primarySensor.getPercentageDeviation().abs().doubleValue()
+                : anomalous.stream()
+                        .mapToDouble(s -> s.getPercentageDeviation().abs().doubleValue())
+                        .max()
+                        .orElse(maxAbsDev);
+        long anomalySensorCount = anomalous.size();
+        long anomalyStageCount = anomalous.stream()
+                .map(AnalysisResponseDto.SensorSummaryDto::getStageName)
+                .distinct()
+                .count();
+        double anomalyShare = anomalySensorCount / (double) summaries.size();
+
+        // Sapma büyüklüğüne göre eğri: düşük/orta/yüksek sapmalar farklı yüzde üretir
+        double devFactor = 1.0 - Math.exp(-primaryDev / 22.0);
+        double prod = 54.0
+                + devFactor * 36.0
+                + anomalySensorCount * 3.2
+                + anomalyStageCount * 4.5
+                + anomalyShare * 14.0
+                + avgAbsDev * 0.25
+                + coilJitter * 0.5;
+        int production = clampInt((int) Math.round(prod), 58, 96);
+        return new ImpactSplit(production, 100 - production);
+    }
+
+    private int clampInt(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private record ImpactSplit(int productionPct, int logisticPct) {}
 
     private AnalysisResponseDto.RootCauseDto toRootCauseDto(RootCauseResult rc, ProcessStage anomalyStage) {
         AnalysisResponseDto.RootCauseDto dto = new AnalysisResponseDto.RootCauseDto();
