@@ -1,0 +1,222 @@
+<div class="quality-page">
+  <header class="page-header">
+    <div>
+      <h1>Hasar Talebi Gelen Bobinler</h1>
+      <p>Kalite kontrol ekibi burada bobinleri sınıflandırır — müşteri sevkiyatı, ikinci kalite veya hurda</p>
+    </div>
+    <a routerLink="/hasar-talep" class="cta-btn">+ Yeni Hasar Talebi</a>
+  </header>
+
+  <div class="filter-tabs">
+    <button type="button" [class.active]="filter === 'pending'" (click)="setFilter('pending')">
+      Bekleyenler
+    </button>
+    <button type="button" [class.active]="filter === 'decided'" (click)="setFilter('decided')">
+      Karar Verilenler
+    </button>
+    <button type="button" [class.active]="filter === 'all'" (click)="setFilter('all')">
+      Tümü
+    </button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="error-banner">{{ errorMessage }}</div>
+  }
+
+  <div class="queue-layout">
+    <aside class="ticket-list-panel panel-box">
+      <div class="panel-head">
+        <strong>Bobin Kuyruğu</strong>
+        <span>{{ tickets.length }} bobin</span>
+      </div>
+
+      @if (loadingList) {
+        <div class="empty-state">Liste yükleniyor...</div>
+      } @else if (tickets.length === 0) {
+        <div class="empty-state">
+          Bu filtrede talep yok.
+          <a routerLink="/hasar-talep">Hasar talebi oluştur →</a>
+        </div>
+      } @else {
+        <div class="ticket-list">
+          @for (ticket of tickets; track ticket.batchId) {
+            <button type="button"
+                    class="ticket-row"
+                    [class.active]="isSelected(ticket)"
+                    (click)="selectTicket(ticket)">
+              <div class="row-top">
+                <strong>{{ ticket.batchId }}</strong>
+                <span class="status-badge" [class.decided]="ticket.gradeStatus === 'DECIDED'">
+                  {{ statusLabel(ticket) }}
+                </span>
+              </div>
+              @if (hasMultipleTickets(ticket)) {
+                <div class="row-group-badge">{{ ticket.relatedTicketCount }} hasar talebi</div>
+              } @else {
+                <div class="row-ticket-no">{{ ticket.ticketNumber }}</div>
+              }
+              <div class="row-meta">
+                {{ ticket.defectType }} · {{ ticket.department }}
+              </div>
+              <div class="row-date">{{ formatDate(ticket.createdAt) }}</div>
+              @if (ticket.finalGradeLabel) {
+                <div class="row-grade">{{ ticket.finalGradeLabel }}</div>
+              }
+            </button>
+          }
+        </div>
+      }
+    </aside>
+
+    <section class="grading-panel">
+      @if (!selectedTicket) {
+        <div class="panel-box empty-detail">
+          <p>Sol listeden bir hasar talebi seçin ve kalite kararı verin.</p>
+        </div>
+      } @else if (loadingDetail) {
+        <div class="panel-box empty-detail">
+          <p>Analiz ve sınıflandırma verileri yükleniyor...</p>
+        </div>
+      } @else {
+        <div class="panel-box ticket-summary">
+          @if (hasMultipleTickets(selectedTicket)) {
+            <div class="group-notice">
+              Bu bobin için <strong>{{ selectedTicket.relatedTicketCount }} ayrı hasar talebi</strong> var.
+              Verdiğiniz kalite kararı tüm talepleri otomatik kapatır.
+            </div>
+            <div class="related-tickets-list">
+              <div class="related-head">İlgili Talepler</div>
+              @for (rel of selectedTicket.relatedTickets; track rel.ticketNumber) {
+                <div class="related-row">
+                  <span class="rel-ticket">{{ rel.ticketNumber }}</span>
+                  <span>{{ rel.defectType }}</span>
+                  <span>{{ rel.reporterName }} · {{ rel.department }}</span>
+                  <span class="rel-date">{{ formatDate(rel.createdAt) }}</span>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="summary-grid">
+            <div><span>Bobin ID</span><strong>{{ selectedTicket.batchId }}</strong></div>
+            <div><span>Son Talep</span><strong>{{ selectedTicket.ticketNumber }}</strong></div>
+            <div><span>Hasar Türü</span><strong>{{ selectedTicket.defectType }}</strong></div>
+            <div><span>Departman</span><strong>{{ selectedTicket.department }}</strong></div>
+            <div><span>Son Bildiren</span><strong>{{ selectedTicket.reporterName }}</strong></div>
+            <div><span>Tespit Yeri</span><strong>{{ selectedTicket.detectedLocation }}</strong></div>
+          </div>
+          @if (analysisHeadline) {
+            <div class="analysis-headline">{{ analysisHeadline }}</div>
+          }
+          @if (selectedTicket.extraNotes) {
+            <div class="extra-notes">Not: {{ selectedTicket.extraNotes }}</div>
+          }
+
+          <div class="analysis-bridge-box">
+            <button type="button" class="btn-analysis-bridge" (click)="openFullAnalysis()">
+              Analiz Başlat
+            </button>
+          </div>
+        </div>
+
+        @if (analysis) {
+          <div class="panel-box analysis-panel">
+            <app-analysis-summary
+              [analysis]="analysis"
+              [coilId]="selectedTicket.batchId"
+              [showFullLink]="false" />
+          </div>
+        }
+
+        @if (qualityGrading) {
+          <div class="panel-box quality-grading-card">
+            <div class="card-header-row">
+              <div class="header-titles">
+                <div class="panel-title-sub">KALİTE KONTROL & HURDA / İKİNCİ KALİTE AYRŞTIRMA</div>
+                <div class="panel-title-main">{{ qualityGrading.headline }}</div>
+              </div>
+              @if (qualityGrading.requiresManualReview) {
+                <span class="manual-review-badge">Manuel Onay Önerilir</span>
+              }
+            </div>
+
+            <div class="grade-options">
+              <button type="button"
+                      class="grade-card customer"
+                      [class.active]="isGradeActive('CUSTOMER')"
+                      [class.recommended]="isRecommendedGrade('CUSTOMER')"
+                      (click)="selectGrade('CUSTOMER')">
+                <span class="grade-icon">✓</span>
+                <strong>Müşteri Sevkiyatı</strong>
+                <small>Birincil Kalite</small>
+                <span class="grade-score">%{{ qualityGrading.customerScore }}</span>
+              </button>
+
+              <button type="button"
+                      class="grade-card second"
+                      [class.active]="isGradeActive('SECOND_QUALITY')"
+                      [class.recommended]="isRecommendedGrade('SECOND_QUALITY')"
+                      (click)="selectGrade('SECOND_QUALITY')">
+                <span class="grade-icon">◐</span>
+                <strong>İkinci Kalite</strong>
+                <small>İskontolu Satış / Yeniden İşleme</small>
+                <span class="grade-score">%{{ qualityGrading.secondQualityScore }}</span>
+              </button>
+
+              <button type="button"
+                      class="grade-card scrap"
+                      [class.active]="isGradeActive('SCRAP')"
+                      [class.recommended]="isRecommendedGrade('SCRAP')"
+                      (click)="selectGrade('SCRAP')">
+                <span class="grade-icon">✕</span>
+                <strong>Hurda</strong>
+                <small>Eritme / Hurda Sahası</small>
+                <span class="grade-score">%{{ qualityGrading.scrapScore }}</span>
+              </button>
+            </div>
+
+            <div class="grade-bar">
+              <div class="bar-customer" [style.width.%]="qualityGrading.customerScore"></div>
+              <div class="bar-second" [style.width.%]="qualityGrading.secondQualityScore"></div>
+              <div class="bar-scrap" [style.width.%]="qualityGrading.scrapScore"></div>
+            </div>
+
+            <div class="indicators-section">
+              <div class="ind-header">SINIFLANDIRMA KRİTERLERİ</div>
+              <ul class="check-list">
+                @for (c of qualityGrading.criteria; track c) {
+                  <li><span class="check-icon">•</span><span>{{ c }}</span></li>
+                }
+              </ul>
+            </div>
+
+            <div class="action-alert-box disposition-box">
+              <div class="alert-title">Yönlendirme Aksiyonu</div>
+              <div class="alert-body">{{ qualityGrading.dispositionAction }}</div>
+            </div>
+
+            <div class="grade-confirm-row">
+              <textarea [(ngModel)]="gradeNotes" class="dark-textarea" rows="2"
+                        placeholder="Kalite mühendisi notu (isteğe bağlı)..."></textarea>
+              <button type="button" class="btn-submit" (click)="confirmQualityGrade()"
+                      [disabled]="!selectedFinalGrade || gradeConfirmed">
+                @if (gradeConfirmed) {
+                  Karar Kaydedildi ✓
+                } @else if (hasMultipleTickets(selectedTicket)) {
+                  {{ selectedTicket.relatedTicketCount }} Talebi Kapat & Onayla
+                } @else {
+                  Kalite Kararını Onayla
+                }
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="panel-box empty-detail">
+            <p>Analiz verisi hazırlanıyor veya bobin henüz sisteme eklenmedi.</p>
+            <p class="hint">Demo bobinler: BOBIN-2026-9041, BOBIN-2026-9050</p>
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>

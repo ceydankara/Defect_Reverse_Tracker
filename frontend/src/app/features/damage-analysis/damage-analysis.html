@@ -1,0 +1,144 @@
+<div class="tracker-container">
+  <header class="module-header">
+    <div>
+      <h1>Hasar Analizi</h1>
+      <p>Bobin ID ile kök neden analizi, sensör grafikleri ve proses değerlendirmesi (Kalite / Bakım / Yönetici).</p>
+    </div>
+  </header>
+
+  <div class="panel-box search-card">
+    @if (fromQuality && batchId) {
+      <div class="from-quality-banner">
+        Kalite sınıflandırma ekranından yönlendirildiniz — <strong>{{ batchId }}</strong> için analiz
+        @if (autoStarted && isLoading) { başlatılıyor... }
+        @else if (autoStarted && isAnalyzed) { tamamlandı. }
+      </div>
+    }
+    <div class="form-grid-2" [class.from-quality-form]="fromQuality">
+      <div class="input-group">
+        <label>Bobin ID</label>
+        <input type="text" [(ngModel)]="batchId" placeholder="Örn: BOBIN-2026-9041" class="dark-input"
+               [readonly]="fromQuality" (keyup.enter)="!fromQuality && onStartAnalysis()" />
+      </div>
+      @if (!fromQuality) {
+        <div class="input-group" style="align-self: end;">
+          <button type="button" class="btn-submit-ticket" (click)="onStartAnalysis()" [disabled]="isLoading">
+            {{ isLoading ? 'Analiz yükleniyor...' : 'Analizi Başlat' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <div class="error-alert">{{ errorMessage }}</div>
+  }
+
+  @if (isAnalyzed) {
+    <div class="ticket-bar">
+      <div class="ticket-info-group">
+        <span class="t-badge">ANALİZ</span>
+        <span class="t-item">BOBİN: <strong>{{ batchId }}</strong></span>
+      </div>
+      <div class="ticket-actions">
+        @if (auth.canGradeQuality()) {
+          <a class="btn-quality-link" [routerLink]="['/kalite-siniflandirma']">Kalite Kararı →</a>
+        }
+        <button class="btn-thresholds" (click)="openThresholdModal()">⚙ Alarm Eşikleri</button>
+      </div>
+    </div>
+
+    <div class="panel-box">
+      <div class="panel-title">ÜRETİM HATTI</div>
+      <div class="stages-row">
+        @for (stage of stages; track stage.title) {
+          <div class="stage-card"
+               [class.card-anomali]="stage.status === 'ANOMALİ'"
+               [class.active-stage]="selectedStageName === stage.title"
+               (click)="selectStage(stage.title)">
+            <div class="stage-name">{{ stage.title }}</div>
+            <span class="badge" [class.badge-anomali]="stage.status === 'ANOMALİ'" [class.badge-ok]="stage.status === 'OK'">
+              • {{ stage.status }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="analysis-details-fade-in">
+      @if (rootCauseEquipment) {
+        <div class="panel-box root-cause-card">
+          <div class="header-titles">
+            <div class="panel-title-sub">HASAR KAYNAĞI SINIFLANDIRICI</div>
+            <div class="panel-title-main">{{ headline || rootCauseEquipment }}</div>
+          </div>
+          <div class="progress-section">
+            <div class="progress-labels"><span>Üretim Kaynaklı</span><span>Lojistik / Dış Etken</span></div>
+            <div class="progress-bar-container">
+              <div class="progress-fill production" [style.width.%]="productionImpact"></div>
+              <div class="progress-fill logistics" [style.width.%]="logisticImpact"></div>
+            </div>
+            <div class="progress-values"><span class="val-prod">%{{ productionImpact }}</span><span class="val-log">%{{ logisticImpact }}</span></div>
+          </div>
+          <div class="indicators-section">
+            <div class="ind-header">KANIT GÖSTERGELERİ</div>
+            <ul class="check-list">
+              @for (ind of evidenceList; track ind) {
+                <li><span class="check-icon">✓</span><span>{{ ind }}</span></li>
+              }
+            </ul>
+          </div>
+          @if (recommendedAction) {
+            <div class="action-alert-box">
+              <div class="alert-title">Önerilen Aksiyon</div>
+              <div class="alert-body">{{ recommendedAction }}</div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (filteredSensors.length > 0) {
+        <div class="panel-box chart-container-card">
+          <div class="chart-header">
+            <div class="chart-title-group">
+              <h3>{{ selectedSensorTitle || 'Sensör Grafiği' }}</h3>
+              <span>{{ selectedSensorStage }} · 0 → 180 sn</span>
+            </div>
+          </div>
+          <div class="canvas-wrapper"><canvas #sensorChartCanvas></canvas></div>
+        </div>
+
+        <div class="panel-box">
+          <div class="panel-title">SENSÖR DEĞERLERİ — {{ selectedStageName?.toUpperCase() }}</div>
+          <div class="sensor-grid">
+            @for (sensor of filteredSensors; track sensor.title) {
+              <div class="sensor-card" [class.sensor-card-anormal]="sensor.state === 'Anormal'"
+                   (click)="onSelectSensorCard(sensor)">
+                <div class="sensor-header">
+                  <span class="sensor-title">{{ sensor.title }}</span>
+                  <span class="sensor-delta">{{ sensor.delta }}</span>
+                </div>
+                <div class="sensor-value">{{ sensor.value }} <small>{{ sensor.unit }}</small></div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (isThresholdModalOpen) {
+    <div class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Alarm Eşiği Editörü</h3>
+          <button class="btn-close" (click)="closeThresholdModal()">✕</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-link" (click)="resetThresholds()">Sıfırla</button>
+          <button class="btn-primary" (click)="saveThresholds()">Kaydet</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

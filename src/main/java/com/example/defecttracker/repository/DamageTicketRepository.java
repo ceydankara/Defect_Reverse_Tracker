@@ -12,5 +12,11 @@ public interface DamageTicketRepository extends JpaRepository<DamageTicket, Long
     Optional<DamageTicket> findByTicketNumber(String ticketNumber);
     List<DamageTicket> findByBatchId(String batchId);
 
+    List<DamageTicket> findByBatchIdIgnoreCaseOrderByCreatedAtDesc(String batchId);
+
+    long countByBatchIdIgnoreCase(String batchId);
+
     List<DamageTicket> findTop5ByOrderByCreatedAtDesc();
+
+    List<DamageTicket> findAllByOrderByCreatedAtDesc();
 }

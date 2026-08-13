@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthUser, LoginRequest } from '../models/auth.model';
+import { ANALYSIS_ROLES, AppRole, QUALITY_ROLES } from '../auth/roles';
 
 const STORAGE_KEY = 'drt_auth';
 const API = 'http://localhost:8080/api/auth';
@@ -37,6 +38,19 @@ export class AuthService {
 
   getToken(): string | null {
     return this.userSignal()?.token ?? null;
+  }
+
+  hasAnyRole(roles: AppRole[]): boolean {
+    const role = this.userSignal()?.role;
+    return !!role && roles.includes(role as AppRole);
+  }
+
+  canAnalyze(): boolean {
+    return this.hasAnyRole(ANALYSIS_ROLES);
+  }
+
+  canGradeQuality(): boolean {
+    return this.hasAnyRole(QUALITY_ROLES);
   }
 
   private persistUser(user: AuthUser): void {

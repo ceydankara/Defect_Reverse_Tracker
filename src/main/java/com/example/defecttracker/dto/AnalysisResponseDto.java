@@ -18,6 +18,7 @@ public class AnalysisResponseDto {
     private List<SensorSummaryDto> sensorSummaries;
     private List<TimeSeriesReadingDto> timeSeriesData;
     private List<String> evidenceIndicators;
+    private QualityGradingDto qualityGrading;
 
     @Data
     public static class StageDto {

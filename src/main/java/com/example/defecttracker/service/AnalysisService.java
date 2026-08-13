@@ -32,10 +32,13 @@ public class AnalysisService {
     private final ProcessStageRepository processStageRepository;
     private final RootCauseResultRepository rootCauseResultRepository;
     private final SensorReadingRepository sensorReadingRepository;
+    private final QualityGradingService qualityGradingService;
+    private final CoilIdResolver coilIdResolver;
 
     public AnalysisResponseDto getAnalysisByCoilId(String coilId) {
-        return coilRepository.findById(coilId)
-                .map(coil -> buildAnalysis(coilId, coil))
+        return coilIdResolver.resolve(coilId)
+                .flatMap(resolved -> coilRepository.findById(resolved)
+                        .map(coil -> buildAnalysis(resolved, coil)))
                 .orElse(null);
     }
 
@@ -95,6 +98,7 @@ public class AnalysisService {
             response.setTimeSeriesData(List.of());
         }
 
+        response.setQualityGrading(qualityGradingService.grade(response));
         return response;
     }
 

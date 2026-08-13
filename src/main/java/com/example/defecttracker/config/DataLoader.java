@@ -38,9 +38,6 @@ public class DataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         seedUsers();
-        if (coilRepository.count() > 0) {
-            return;
-        }
         seedCoil9041();
         seedCoil9050();
         seedCoil9042();
@@ -162,6 +159,10 @@ public class DataLoader implements CommandLineRunner {
             int log,
             String action,
             Function<String, List<SensorReading>> sensorFactory) {
+
+        if (coilRepository.existsById(coilId)) {
+            return;
+        }
 
         saveCoil(coilId, grade);
         saveDefect(coilId, defectCode);

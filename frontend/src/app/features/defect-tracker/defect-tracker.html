@@ -1,374 +1,95 @@
 <div class="tracker-container">
   <header class="module-header">
     <div>
-      <h1>Hasar Talep & Kök Neden Analizi</h1>
-      <p>Bobin bilgilerini girin, talep oluşturun ve analizi başlatın.</p>
+      <h1>Hasar Talep Formu</h1>
+      <p>Hasarı bildirin — kalite ekibi değerlendirme ve sınıflandırmayı ayrı ekranda yapar.</p>
     </div>
   </header>
 
-  <!-- A) AŞAMA 1: HASAR TALEP FORMU (FORM DOLDURULMADAN ÖNCE GÖRÜNÜR) -->
-  <div *ngIf="!isFormSubmitted" class="panel-box ticket-form-card">
-    <div class="form-header">
-      <h2 class="form-main-title">Hasar Talep Formu</h2>
-      <p class="form-sub-title">Formu doldurun, sistem otomatik olarak kök neden analizini başlatacak.</p>
-    </div>
-
-    <!-- 1. BİLDİREN BİLGİLERİ -->
-    <div class="form-section">
-      <div class="section-badge"><span class="num">1</span> Bildiren Bilgileri</div>
-      <div class="form-grid-2">
-        <div class="input-group">
-          <label>Ad Soyad *</label>
-          <input type="text" [(ngModel)]="reporterName" placeholder="Örn: Mehmet Yılmaz" class="dark-input" />
-        </div>
-        <div class="input-group">
-          <label>Departman *</label>
-          <select [(ngModel)]="department" class="dark-input">
-            <option value="" disabled selected>Seçin...</option>
-            <option value="Bakım-Onarım">Bakım-Onarım</option>
-            <option value="Kalite Kontrol">Kalite Kontrol</option>
-            <option value="Üretim Planlama">Üretim Planlama</option>
-            <option value="Lojistik / Depo">Lojistik / Depo</option>
-          </select>
-        </div>
+  @if (!isFormSubmitted) {
+    <div class="panel-box ticket-form-card">
+      <div class="form-header">
+        <h2 class="form-main-title">Hasar Talep Formu</h2>
+        <p class="form-sub-title">Formu doldurup gönderin. Talebiniz kalite kuyruğuna düşer.</p>
       </div>
-    </div>
 
-    <!-- 2. BOBİN & TESPİT BİLGİSİ -->
-    <div class="form-section">
-      <div class="section-badge"><span class="num">2</span> Bobin & Tespit Bilgisi</div>
-      <div class="form-grid-2">
-        <div class="input-group">
-          <label>Bobin ID *</label>
-          <input type="text" [(ngModel)]="batchId" placeholder="Örn: BOBIN-2026-9041" class="dark-input" />
-        </div>
-        <div class="input-group">
-          <label>Hasar Nerede Fark Edildi?</label>
-          <div class="location-btn-group">
-            <button type="button"
-                    [class.active]="detectedLocation === 'Üretim Hattı'"
-                    (click)="detectedLocation = 'Üretim Hattı'">
-              Üretim Hattı
-            </button>
-            <button type="button"
-                    [class.active]="detectedLocation === 'Depo / Sevkiyat'"
-                    (click)="detectedLocation = 'Depo / Sevkiyat'">
-              Depo / Sevkiyat
-            </button>
-            <button type="button"
-                    [class.active]="detectedLocation === 'Müşteri / Saha'"
-                    (click)="detectedLocation = 'Müşteri / Saha'">
-              Müşteri / Saha
-            </button>
+      <div class="form-section">
+        <div class="section-badge"><span class="num">1</span> Bildiren Bilgileri</div>
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label>Ad Soyad *</label>
+            <input type="text" [(ngModel)]="reporterName" class="dark-input" />
+          </div>
+          <div class="input-group">
+            <label>Departman *</label>
+            <select [(ngModel)]="department" class="dark-input">
+              <option value="" disabled selected>Seçin...</option>
+              <option value="Bakım-Onarım">Bakım-Onarım</option>
+              <option value="Kalite Kontrol">Kalite Kontrol</option>
+              <option value="Üretim Planlama">Üretim Planlama</option>
+              <option value="Lojistik / Depo">Lojistik / Depo</option>
+            </select>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 3. GÖZLEMLENEN HASAR TÜRÜ -->
-    <div class="form-section">
-      <div class="section-badge"><span class="num">3</span> Gözlemlenen Hasar Türü *</div>
-
-      <div class="defect-group-label">ÜRETİM KAYNAKLI GÖRÜNÜMLER</div>
-      <div class="defect-cards-grid">
-        <div class="defect-btn-card" [class.selected]="defectType === 'Kenar Bozukluğu'" (click)="selectDefectType('Kenar Bozukluğu')">
-          <div class="d-title">Kenar Bozukluğu</div>
-        </div>
-        <div class="defect-btn-card" [class.selected]="defectType === 'Yüzey Çiziği'" (click)="selectDefectType('Yüzey Çiziği')">
-          <div class="d-title">Yüzey Çiziği</div>
-        </div>
-        <div class="defect-btn-card" [class.selected]="defectType === 'Tufal / Pullanma'" (click)="selectDefectType('Tufal / Pullanma')">
-          <div class="d-title">Tufal / Pullanma</div>
-        </div>
-        <div class="defect-btn-card" [class.selected]="defectType === 'Çatlak'" (click)="selectDefectType('Çatlak')">
-          <div class="d-title">Çatlak</div>
-        </div>
-        <div class="defect-btn-card" [class.selected]="defectType === 'Kalınlık Sapması'" (click)="selectDefectType('Kalınlık Sapması')">
-          <div class="d-title">Kalınlık Sapması</div>
-        </div>
-        <div class="defect-btn-card" [class.selected]="defectType === 'Dalgalanma / Kıvrım'" (click)="selectDefectType('Dalgalanma / Kıvrım')">
-          <div class="d-title">Dalgalanma / Kıvrım</div>
-        </div>
-      </div>
-
-      <div class="defect-group-label" style="margin-top: 16px;">MEKANİK / DIŞ KAYNAKLI HASAR</div>
-      <div class="defect-cards-grid">
-        <div class="defect-btn-card wide" [class.selected]="defectType === 'Darbe İzi'" (click)="selectDefectType('Darbe İzi')">
-          <div class="d-title">Darbe İzi</div>
-          <div class="d-sub">Belirli noktada ezik veya göçük — ani çarpma</div>
-        </div>
-        <div class="defect-btn-card wide" [class.selected]="defectType === 'İstif / Baskı Hasarı'" (click)="selectDefectType('İstif / Baskı Hasarı')">
-          <div class="d-title">İstif / Baskı Hasarı</div>
-          <div class="d-sub">Depo veya taşıma sırasında geniş alan deforme</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. EK NOTLAR -->
-    <div class="form-section">
-      <div class="section-badge"><span class="num">4</span> Ek Notlar (İsteğe Bağlı)</div>
-      <textarea [(ngModel)]="extraNotes" placeholder="Hasarla ilgili ek gözlem veya bağlam bilgisi girin..." class="dark-textarea"></textarea>
-    </div>
-
-    <!-- SUBMIT BUTTON -->
-    <div class="form-footer-action">
-      <div class="summary-text" *ngIf="reporterName && department && defectType">
-        {{ reporterName }} · {{ department }} - {{ defectType }}
-      </div>
-      <button type="button" class="btn-submit-ticket" (click)="onSubmitTicketAndStartAnalysis()" [disabled]="isLoading">
-        {{ isLoading ? 'Analiz Başlatılıyor...' : '➔ Talebi Oluştur ve Analizi Başlat' }}
-      </button>
-    </div>
-  </div>
-
-
-  <!-- B) AŞAMALI ANALİZ EKRANI (FORM DOLDURULDUKTAN SONRA AÇILIR) -->
-  <div *ngIf="isFormSubmitted">
-
-    <!-- ÜST BİLET VE BİLGİLENDİRME BARI -->
-    <div class="ticket-bar">
-      <div class="ticket-info-group">
-        <span class="t-badge">TICKET {{ ticketNumber }}</span>
-        <span class="t-item">BOBİN: <strong>{{ batchId }}</strong></span>
-        <span class="t-item">HASAR: <strong>{{ defectType }}</strong></span>
-        <span class="t-item">KONUM: <strong>{{ detectedLocation }}</strong></span>
-        <span class="t-item">BİLDİREN: <strong>{{ reporterName }} — {{ department }}</strong></span>
-      </div>
-
-      <div class="ticket-actions">
-        <button class="btn-new-ticket" (click)="openNewTicketForm()">← Yeni Talep</button>
-        <button class="btn-thresholds" (click)="openThresholdModal()">⚙ Alarm Eşikleri</button>
-      </div>
-    </div>
-
-    <!-- ÜRETİM HATTI AŞAMALARI -->
-    <div class="panel-box">
-      <div class="panel-title">
-        ÜRETİM HATTI
-        <small *ngIf="selectedStageName" style="color: #00b4d8; font-size: 0.8rem; margin-left: 10px; font-weight: normal;">
-          (Seçili Aşama: {{ selectedStageName }} — Filtrelendi)
-        </small>
-      </div>
-
-      <div class="stages-row">
-        <div *ngFor="let stage of stages"
-             class="stage-card"
-             [class.card-anomali]="stage.status === 'ANOMALİ'"
-             [class.active-stage]="selectedStageName === stage.title"
-             [class.selected-anomaly]="selectedStageName === stage.title && stage.status === 'ANOMALİ'"
-             [class.selected-normal]="selectedStageName === stage.title && stage.status !== 'ANOMALİ'"
-             (click)="selectStage(stage.title)">
-          <div class="stage-name">{{ stage.title }}</div>
-          <span class="badge"
-                [class.badge-waiting]="stage.status === 'BEKLEMEDE'"
-                [class.badge-ok]="stage.status === 'OK'"
-                [class.badge-anomali]="stage.status === 'ANOMALİ'">
-            • {{ stage.status }}
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- HATA MESAJI -->
-    <div *ngIf="errorMessage" class="error-alert">
-      {{ errorMessage }}
-    </div>
-
-    <!-- ALT DETAY PANELLERİ -->
-    <div *ngIf="isAnalyzed" class="analysis-details-fade-in">
-
-      <!-- HASAR KAYNAĞI SINIFLANDIRICI -->
-      <div class="panel-box root-cause-card" *ngIf="rootCauseEquipment">
-        <div class="card-header-row">
-          <div class="header-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
+      <div class="form-section">
+        <div class="section-badge"><span class="num">2</span> Bobin & Tespit Bilgisi</div>
+        <div class="form-grid-2">
+          <div class="input-group">
+            <label>Bobin ID *</label>
+            <input type="text" [(ngModel)]="batchId" (ngModelChange)="onBatchIdChange()" class="dark-input" placeholder="BOBIN-2026-9041" />
           </div>
-          <div class="header-titles">
-            <div class="panel-title-sub">HASAR KAYNAĞI SINIFLANDIRICI</div>
-            <div class="panel-title-main">
-              {{ headline || ('Hasar Kaynağı Tespit Edildi — ' + rootCauseEquipment) }}
+          <div class="input-group">
+            <label>Hasar Nerede Fark Edildi?</label>
+            <div class="location-btn-group">
+              <button type="button" [class.active]="detectedLocation === 'Üretim Hattı'" (click)="detectedLocation = 'Üretim Hattı'">Üretim Hattı</button>
+              <button type="button" [class.active]="detectedLocation === 'Depo / Sevkiyat'" (click)="detectedLocation = 'Depo / Sevkiyat'">Depo / Sevkiyat</button>
+              <button type="button" [class.active]="detectedLocation === 'Müşteri / Saha'" (click)="detectedLocation = 'Müşteri / Saha'">Müşteri / Saha</button>
             </div>
           </div>
         </div>
 
-        <div class="progress-section">
-          <div class="progress-labels">
-            <span>Üretim Kaynaklı</span>
-            <span>Lojistik / Dış Etken</span>
+        @if (coilHistoryLoading) {
+          <div class="coil-history-card loading">Bobin geçmişi kontrol ediliyor...</div>
+        } @else if (coilHistory?.previouslyReported) {
+          <div class="coil-history-card warning">
+            <strong>⚠ Bu bobin daha önce raporlandı</strong>
+            <p>{{ coilHistory!.summaryMessage }}</p>
           </div>
-
-          <div class="progress-bar-container">
-            <div class="progress-fill production" [style.width.%]="productionImpact" [title]="'Üretim: %' + productionImpact"></div>
-            <div class="progress-fill logistics" [style.width.%]="logisticImpact" [title]="'Lojistik: %' + logisticImpact"></div>
-          </div>
-
-          <div class="progress-values">
-            <span class="val-prod">%{{ productionImpact }}</span>
-            <span class="val-log">%{{ logisticImpact }}</span>
-          </div>
-        </div>
-
-        <div class="indicators-section">
-          <div class="ind-header">KANIT GÖSTERGELERİ</div>
-          <ul class="check-list">
-            <li *ngFor="let ind of evidenceList">
-              <span class="check-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="#10b981" stroke-width="2" fill="none"/>
-                  <path d="M8 12l3 3 5-5" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
-              <span>{{ ind }}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="action-alert-box" *ngIf="recommendedAction">
-          <div class="alert-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            Önerilen Aksiyon
-          </div>
-          <div class="alert-body">
-            {{ recommendedAction }}
-          </div>
-        </div>
+        }
       </div>
 
-      <!-- DİNAMİK GRAFİK PANELİ -->
-      <div class="panel-box chart-container-card" *ngIf="filteredSensors.length > 0">
-        <div class="chart-header">
-          <div class="chart-title-group">
-            <h3>{{ selectedSensorTitle || 'Sensör Değişim Grafiği' }}</h3>
-            <span>{{ selectedSensorStage }} · 0 → 180 sn</span>
-          </div>
-
-          <div class="chart-legend">
-            <span class="legend-item"><i class="dot gercek"></i> Gerçek</span>
-            <span class="legend-item"><i class="dot hedef"></i> Hedef</span>
-            <span class="legend-item"><i class="dot uyari"></i> Uyarı</span>
-            <span class="legend-item"><i class="dot kritik"></i> Kritik</span>
-          </div>
-        </div>
-
-        <div class="canvas-wrapper">
-          <canvas #sensorChartCanvas></canvas>
-        </div>
-      </div>
-
-      <!-- SENSÖR ÖZET KARTLARI -->
-      <div class="panel-box" *ngIf="filteredSensors.length > 0">
-        <div class="panel-title">
-          SENSÖR DEĞERLERİ {{ selectedStageName ? '— ' + selectedStageName.toUpperCase() : '— TÜM AŞAMALAR' }}
-        </div>
-        <div class="sensor-grid">
-          <div *ngFor="let sensor of filteredSensors"
-               class="sensor-card"
-               [class.sensor-card-anormal]="sensor.state === 'Anormal'"
-               [class.sensor-selected-anomaly]="selectedSensorTitle === sensor.title && sensor.state === 'Anormal'"
-               [class.sensor-selected-normal]="selectedSensorTitle === sensor.title && sensor.state !== 'Anormal'"
-               (click)="onSelectSensorCard(sensor)">
-            <div class="sensor-header">
-              <span class="sensor-title">{{ sensor.title }}</span>
-              <span class="sensor-delta" [class.text-danger]="sensor.state === 'Anormal'">{{ sensor.delta }}</span>
+      <div class="form-section">
+        <div class="section-badge"><span class="num">3</span> Gözlemlenen Hasar Türü *</div>
+        <div class="defect-cards-grid">
+          @for (type of ['Kenar Bozukluğu','Yüzey Çiziği','Darbe İzi','Kalınlık Sapması','İstif / Baskı Hasarı']; track type) {
+            <div class="defect-btn-card" [class.selected]="defectType === type" (click)="selectDefectType(type)">
+              <div class="d-title">{{ type }}</div>
             </div>
-            <div class="sensor-value">{{ sensor.value }} <small>{{ sensor.unit }}</small></div>
-            <div class="sensor-state">Durum: {{ sensor.state }}</div>
-          </div>
+          }
         </div>
       </div>
 
-    </div>
-  </div>
-
-  <!-- ALARM EŞİĞİ EDİTÖRÜ POPUP MODAL -->
-  <div class="modal-overlay" *ngIf="isThresholdModalOpen">
-    <div class="modal-container">
-      <div class="modal-header">
-        <div>
-          <h3 class="modal-title">Alarm Eşiği Editörü</h3>
-          <p class="modal-subtitle">Sensör başına uyarı ve kritik limitler</p>
-        </div>
-        <button class="btn-close" (click)="closeThresholdModal()">✕</button>
+      <div class="form-section">
+        <div class="section-badge"><span class="num">4</span> Ek Notlar</div>
+        <textarea [(ngModel)]="extraNotes" class="dark-textarea" placeholder="Ek gözlem..."></textarea>
       </div>
 
-      <div class="tab-row">
-        <button *ngFor="let stage of ['Çelikhane', 'Sıcak Haddehane', 'Asitleme', 'Soğuk Haddehane']"
-                class="tab-btn"
-                [class.active]="activeThresholdStage === stage"
-                (click)="activeThresholdStage = stage">
-          {{ stage }}
+      <div class="form-footer-action">
+        <button type="button" class="btn-submit-ticket" (click)="onSubmitTicket()" [disabled]="isLoading">
+          {{ isLoading ? 'Gönderiliyor...' : '➔ Hasar Talebini Gönder' }}
         </button>
       </div>
-
-      <div class="legend-row">
-        <span class="legend-item"><span class="dot warning"></span> Uyarı zonu</span>
-        <span class="legend-item"><span class="dot critical"></span> Kritik zon</span>
-      </div>
-
-      <div class="modal-body">
-        <div class="threshold-card" *ngFor="let sensor of filteredThresholdSensors">
-          <div class="sensor-card-header">
-            <span class="sensor-name">• {{ sensor.name }} <small>({{ sensor.unit }})</small></span>
-            <span class="sensor-target">Hedef: <strong>{{ sensor.target }}</strong></span>
-          </div>
-
-          <div class="zone-bar">
-            <div class="zone critical-zone"></div>
-            <div class="zone target-zone">{{ sensor.target }} {{ sensor.unit }}</div>
-            <div class="zone warning-zone"></div>
-          </div>
-
-          <div class="inputs-grid">
-            <div class="input-item critical">
-              <label>Kritik Alt</label>
-              <div class="input-with-unit">
-                <input type="number" [(ngModel)]="sensor.criticalMin" />
-                <span>{{ sensor.unit }}</span>
-              </div>
-            </div>
-
-            <div class="input-item critical">
-              <label>Kritik Üst</label>
-              <div class="input-with-unit">
-                <input type="number" [(ngModel)]="sensor.criticalMax" />
-                <span>{{ sensor.unit }}</span>
-              </div>
-            </div>
-
-            <div class="input-item warning">
-              <label>Uyarı Alt</label>
-              <div class="input-with-unit">
-                <input type="number" [(ngModel)]="sensor.warningMin" />
-                <span>{{ sensor.unit }}</span>
-              </div>
-            </div>
-
-            <div class="input-item warning">
-              <label>Uyarı Üst</label>
-              <div class="input-with-unit">
-                <input type="number" [(ngModel)]="sensor.warningMax" />
-                <span>{{ sensor.unit }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-link" (click)="resetThresholds()">Varsayılana sıfırla</button>
-        <div class="footer-actions">
-          <button class="btn-secondary" (click)="closeThresholdModal()">İptal</button>
-          <button class="btn-primary" (click)="saveThresholds()">Kaydet</button>
-        </div>
-      </div>
     </div>
-  </div>
-
+  } @else {
+    <div class="panel-box success-card">
+      <div class="success-icon">✓</div>
+      <h2>Talep Oluşturuldu</h2>
+      <p class="ticket-ref">Ticket: <strong>{{ ticketNumber }}</strong></p>
+      <p>Bobin <strong>{{ batchId }}</strong> kalite değerlendirme kuyruğuna eklendi.</p>
+      <p class="hint">Kalite ekibi hasar tespitini inceleyip sınıflandırma kararı verecektir.</p>
+      <button type="button" class="btn-submit-ticket" (click)="openNewTicketForm()">← Yeni Talep Oluştur</button>
+    </div>
+  }
 </div>
