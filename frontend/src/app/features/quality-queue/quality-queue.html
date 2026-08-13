@@ -71,11 +71,61 @@
     <section class="grading-panel">
       @if (!selectedTicket) {
         <div class="panel-box empty-detail">
-          <p>Sol listeden bir hasar talebi seçin ve kalite kararı verin.</p>
+          @if (filter === 'decided') {
+            <p>Sol listeden karar verilmiş bir bobin seçin.</p>
+          } @else {
+            <p>Sol listeden bir hasar talebi seçin ve kalite kararı verin.</p>
+          }
         </div>
       } @else if (loadingDetail) {
         <div class="panel-box empty-detail">
           <p>Analiz ve sınıflandırma verileri yükleniyor...</p>
+        </div>
+      } @else if (isDecidedView()) {
+        <div class="panel-box decided-summary">
+          <div class="decided-header">
+            <div>
+              <div class="panel-title-sub">KALİTE KARARI</div>
+              <h2>{{ selectedTicket.batchId }}</h2>
+            </div>
+            <span class="decided-badge" [class]="gradeBadgeClass(selectedTicket.finalGrade)">
+              {{ selectedTicket.finalGradeLabel || '—' }}
+            </span>
+          </div>
+
+          <div class="summary-grid decided-grid">
+            <div><span>Bobin ID</span><strong>{{ selectedTicket.batchId }}</strong></div>
+            <div><span>Hasar Türü</span><strong>{{ selectedTicket.defectType }}</strong></div>
+            <div><span>Departman</span><strong>{{ selectedTicket.department }}</strong></div>
+            <div><span>Tespit Yeri</span><strong>{{ selectedTicket.detectedLocation }}</strong></div>
+            @if (selectedTicket.inspectorName) {
+              <div><span>Kararı Veren</span><strong>{{ selectedTicket.inspectorName }}</strong></div>
+            }
+            @if (selectedTicket.recommendedGradeLabel) {
+              <div><span>Sistem Önerisi</span><strong>{{ selectedTicket.recommendedGradeLabel }}</strong></div>
+            }
+          </div>
+
+          @if (hasMultipleTickets(selectedTicket) && selectedTicket.relatedTickets?.length) {
+            <div class="decided-defects-list">
+              <div class="related-head">Bu Bobine Ait Hasar Bildirimleri</div>
+              @for (rel of selectedTicket.relatedTickets; track rel.ticketNumber) {
+                <div class="decided-defect-row">
+                  <div class="defect-main">
+                    <strong>{{ rel.defectType }}</strong>
+                    <span class="rel-ticket">{{ rel.ticketNumber }}</span>
+                  </div>
+                  <div class="defect-meta">
+                    {{ rel.reporterName }} · {{ rel.department }} · {{ formatDate(rel.createdAt) }}
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (selectedTicket.extraNotes) {
+            <div class="extra-notes">Not: {{ selectedTicket.extraNotes }}</div>
+          }
         </div>
       } @else {
         <div class="panel-box ticket-summary">

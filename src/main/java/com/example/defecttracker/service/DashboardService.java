@@ -2,15 +2,20 @@ package com.example.defecttracker.service;
 
 import com.example.defecttracker.dto.DashboardStatsDto;
 import com.example.defecttracker.entity.DamageTicket;
+import com.example.defecttracker.entity.QualityGradeRecord;
 import com.example.defecttracker.repository.CoilRepository;
 import com.example.defecttracker.repository.DamageTicketRepository;
 import com.example.defecttracker.repository.DefectRepository;
 import com.example.defecttracker.repository.ProcessStageRepository;
+import com.example.defecttracker.repository.QualityGradeRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +26,13 @@ public class DashboardService {
     private final DefectRepository defectRepository;
     private final ProcessStageRepository processStageRepository;
     private final DamageTicketRepository damageTicketRepository;
+    private final QualityGradeRecordRepository gradeRecordRepository;
+
+    private static final Map<String, String> GRADE_LABELS = Map.of(
+            "CUSTOMER", "Müşteri Sevkiyatı",
+            "SECOND_QUALITY", "İkinci Kalite",
+            "SCRAP", "Hurda"
+    );
 
     public DashboardStatsDto getStats() {
         DashboardStatsDto stats = new DashboardStatsDto();
@@ -52,7 +64,30 @@ public class DashboardService {
                 .map(this::toRecentTicket)
                 .collect(Collectors.toList()));
 
+        Set<String> coilsWithTickets = damageTicketRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(t -> normalizeCoilKey(t.getBatchId()))
+                .collect(Collectors.toSet());
+        long decidedCoils = gradeRecordRepository.findAll().stream()
+                .map(r -> normalizeCoilKey(r.getCoilId()))
+                .distinct()
+                .count();
+        stats.setPendingQualityCount(Math.max(0, coilsWithTickets.size() - decidedCoils));
+        stats.setDecidedQualityCount(decidedCoils);
+
+        Map<String, Long> gradeCounts = gradeRecordRepository.findAll().stream()
+                .collect(Collectors.groupingBy(QualityGradeRecord::getFinalGrade, Collectors.counting()));
+        stats.setQualityByGrade(GRADE_LABELS.entrySet().stream()
+                .map(e -> new DashboardStatsDto.CountItem(
+                        e.getValue(),
+                        gradeCounts.getOrDefault(e.getKey(), 0L)))
+                .filter(item -> item.getCount() > 0)
+                .collect(Collectors.toList()));
+
         return stats;
+    }
+
+    private String normalizeCoilKey(String batchId) {
+        return batchId == null ? "" : batchId.trim().toUpperCase(Locale.ROOT);
     }
 
     private DashboardStatsDto.RecentTicketDto toRecentTicket(DamageTicket ticket) {
@@ -62,6 +97,7 @@ public class DashboardService {
         dto.setDefectType(ticket.getDefectType());
         dto.setDepartment(ticket.getDepartment());
         dto.setReporterName(ticket.getReporterName());
+        dto.setCreatedAt(ticket.getCreatedAt());
         return dto;
     }
 }

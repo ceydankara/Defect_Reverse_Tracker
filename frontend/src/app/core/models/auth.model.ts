@@ -16,9 +16,12 @@ export interface DashboardStats {
   totalTickets: number;
   productionAnomalyCount: number;
   logisticsCaseCount: number;
+  pendingQualityCount: number;
+  decidedQualityCount: number;
   anomaliesByStage: CountItem[];
   defectsByCode: CountItem[];
   defectsBySteelGrade: CountItem[];
+  qualityByGrade: CountItem[];
   recentTickets: RecentTicket[];
 }
 
@@ -33,4 +36,5 @@ export interface RecentTicket {
   defectType: string;
   department: string;
   reporterName: string;
+  createdAt?: string;
 }
