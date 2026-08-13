@@ -1,8 +1,10 @@
 package com.example.defecttracker.service;
 
+import com.example.defecttracker.config.RolePermissions;
 import com.example.defecttracker.dto.DashboardStatsDto;
 import com.example.defecttracker.entity.DamageTicket;
 import com.example.defecttracker.entity.QualityGradeRecord;
+import com.example.defecttracker.entity.User;
 import com.example.defecttracker.repository.CoilRepository;
 import com.example.defecttracker.repository.DamageTicketRepository;
 import com.example.defecttracker.repository.DefectRepository;
@@ -34,7 +36,7 @@ public class DashboardService {
             "SCRAP", "Hurda"
     );
 
-    public DashboardStatsDto getStats() {
+    public DashboardStatsDto getStats(User user) {
         DashboardStatsDto stats = new DashboardStatsDto();
         stats.setTotalCoils(coilRepository.count());
         stats.setTotalDefects(defectRepository.count());
@@ -64,24 +66,30 @@ public class DashboardService {
                 .map(this::toRecentTicket)
                 .collect(Collectors.toList()));
 
-        Set<String> coilsWithTickets = damageTicketRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(t -> normalizeCoilKey(t.getBatchId()))
-                .collect(Collectors.toSet());
-        long decidedCoils = gradeRecordRepository.findAll().stream()
-                .map(r -> normalizeCoilKey(r.getCoilId()))
-                .distinct()
-                .count();
-        stats.setPendingQualityCount(Math.max(0, coilsWithTickets.size() - decidedCoils));
-        stats.setDecidedQualityCount(decidedCoils);
+        if (RolePermissions.canGradeQuality(user)) {
+            Set<String> coilsWithTickets = damageTicketRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .map(t -> normalizeCoilKey(t.getBatchId()))
+                    .collect(Collectors.toSet());
+            long decidedCoils = gradeRecordRepository.findAll().stream()
+                    .map(r -> normalizeCoilKey(r.getCoilId()))
+                    .distinct()
+                    .count();
+            stats.setPendingQualityCount(Math.max(0, coilsWithTickets.size() - decidedCoils));
+            stats.setDecidedQualityCount(decidedCoils);
 
-        Map<String, Long> gradeCounts = gradeRecordRepository.findAll().stream()
-                .collect(Collectors.groupingBy(QualityGradeRecord::getFinalGrade, Collectors.counting()));
-        stats.setQualityByGrade(GRADE_LABELS.entrySet().stream()
-                .map(e -> new DashboardStatsDto.CountItem(
-                        e.getValue(),
-                        gradeCounts.getOrDefault(e.getKey(), 0L)))
-                .filter(item -> item.getCount() > 0)
-                .collect(Collectors.toList()));
+            Map<String, Long> gradeCounts = gradeRecordRepository.findAll().stream()
+                    .collect(Collectors.groupingBy(QualityGradeRecord::getFinalGrade, Collectors.counting()));
+            stats.setQualityByGrade(GRADE_LABELS.entrySet().stream()
+                    .map(e -> new DashboardStatsDto.CountItem(
+                            e.getValue(),
+                            gradeCounts.getOrDefault(e.getKey(), 0L)))
+                    .filter(item -> item.getCount() > 0)
+                    .collect(Collectors.toList()));
+        } else {
+            stats.setPendingQualityCount(0);
+            stats.setDecidedQualityCount(0);
+            stats.setQualityByGrade(List.of());
+        }
 
         return stats;
     }

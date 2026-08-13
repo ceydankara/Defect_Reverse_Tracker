@@ -8,14 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Set;
-
 @Component
 @RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor {
-
-    private static final Set<String> ANALYSIS_ROLES = Set.of("ADMIN", "QUALITY", "MAINTENANCE");
-    private static final Set<String> QUALITY_ROLES = Set.of("ADMIN", "QUALITY");
 
     private final AuthService authService;
 
@@ -42,21 +37,17 @@ public class AuthInterceptor implements HandlerInterceptor {
         request.setAttribute("currentUser", user);
 
         String path = request.getRequestURI();
-        if (path.startsWith("/api/analysis") && !hasAnyRole(user, ANALYSIS_ROLES)) {
+        if (path.startsWith("/api/analysis") && !RolePermissions.canAnalyze(user)) {
             return forbidden(response, "Hasar analizi için yetkiniz yok.");
         }
-        if (path.startsWith("/api/quality") && !hasAnyRole(user, QUALITY_ROLES)) {
+        if (path.startsWith("/api/quality") && !RolePermissions.canGradeQuality(user)) {
             return forbidden(response, "Kalite sınıflandırma için yetkiniz yok.");
         }
-        if (path.startsWith("/api/tickets/queue") && !hasAnyRole(user, QUALITY_ROLES)) {
+        if (path.startsWith("/api/tickets/queue") && !RolePermissions.canGradeQuality(user)) {
             return forbidden(response, "Kalite kuyruğu için yetkiniz yok.");
         }
 
         return true;
-    }
-
-    private boolean hasAnyRole(User user, Set<String> roles) {
-        return user.getRole() != null && roles.contains(user.getRole());
     }
 
     private boolean forbidden(HttpServletResponse response, String message) throws Exception {

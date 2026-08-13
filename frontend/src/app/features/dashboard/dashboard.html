@@ -14,6 +14,10 @@
     </div>
   </header>
 
+  @if (accessDeniedMessage) {
+    <div class="access-denied-banner">{{ accessDeniedMessage }}</div>
+  }
+
   @if (loading) {
     <div class="loading-state">
       <div class="spinner"></div>
@@ -43,22 +47,24 @@
           <small>Toplam bildirim</small>
         </div>
       </article>
-      <article class="kpi-card kpi-amber">
-        <div class="kpi-icon">⏳</div>
-        <div class="kpi-body">
-          <span>Bekleyen Kalite</span>
-          <strong>{{ stats.pendingQualityCount }}</strong>
-          <small>Karar bekleyen bobin</small>
-        </div>
-      </article>
-      <article class="kpi-card kpi-green">
-        <div class="kpi-icon">✓</div>
-        <div class="kpi-body">
-          <span>Karar Verildi</span>
-          <strong>{{ stats.decidedQualityCount }}</strong>
-          <small>Sınıflandırılmış bobin</small>
-        </div>
-      </article>
+      @if (auth.canGradeQuality()) {
+        <article class="kpi-card kpi-amber">
+          <div class="kpi-icon">⏳</div>
+          <div class="kpi-body">
+            <span>Bekleyen Kalite</span>
+            <strong>{{ stats.pendingQualityCount }}</strong>
+            <small>Karar bekleyen bobin</small>
+          </div>
+        </article>
+        <article class="kpi-card kpi-green">
+          <div class="kpi-icon">✓</div>
+          <div class="kpi-body">
+            <span>Karar Verildi</span>
+            <strong>{{ stats.decidedQualityCount }}</strong>
+            <small>Sınıflandırılmış bobin</small>
+          </div>
+        </article>
+      }
       <article class="kpi-card kpi-red">
         <div class="kpi-icon">⚠</div>
         <div class="kpi-body">
@@ -177,7 +183,7 @@
         }
       </article>
 
-      @if (stats.qualityByGrade.length > 0) {
+      @if (auth.canGradeQuality() && stats.qualityByGrade.length > 0) {
         <article class="panel">
           <div class="panel-head">
             <div>
@@ -232,7 +238,9 @@
             <div class="panel-tag">AKIŞ</div>
             <h2>Son Hasar Talepleri</h2>
           </div>
-          <a routerLink="/kalite-siniflandirma" class="panel-link">Tümünü gör →</a>
+          @if (auth.canGradeQuality()) {
+            <a routerLink="/kalite-siniflandirma" class="panel-link">Tümünü gör →</a>
+          }
         </div>
         @if (stats.recentTickets.length === 0) {
           <p class="empty">Henüz talep oluşturulmamış.</p>

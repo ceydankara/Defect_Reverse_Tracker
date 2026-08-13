@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthUser, LoginRequest } from '../models/auth.model';
-import { ANALYSIS_ROLES, AppRole, QUALITY_ROLES } from '../auth/roles';
+import { ANALYSIS_ROLES, AppRole, QUALITY_ROLES, ROLE_LABELS } from '../auth/roles';
 
 const STORAGE_KEY = 'drt_auth';
 const API = 'http://localhost:8080/api/auth';
@@ -51,6 +51,11 @@ export class AuthService {
 
   canGradeQuality(): boolean {
     return this.hasAnyRole(QUALITY_ROLES);
+  }
+
+  roleLabel(): string {
+    const role = this.userSignal()?.role as AppRole | undefined;
+    return role ? (ROLE_LABELS[role] ?? role) : '';
   }
 
   private persistUser(user: AuthUser): void {
