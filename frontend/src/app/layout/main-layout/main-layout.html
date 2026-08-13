@@ -13,8 +13,18 @@
         <span class="icon">📊</span> Ana Panel
       </a>
       <a routerLink="/hasar-talep" routerLinkActive="active">
-        <span class="icon">🔍</span> Hasar Talep & Analiz
+        <span class="icon">📝</span> Hasar Talep Formu
       </a>
+      @if (auth.canAnalyze()) {
+        <a routerLink="/hasar-analiz" routerLinkActive="active">
+          <span class="icon">🔍</span> Hasar Analizi
+        </a>
+      }
+      @if (auth.canGradeQuality()) {
+        <a routerLink="/kalite-siniflandirma" routerLinkActive="active">
+          <span class="icon">🏷</span> Kalite Sınıflandırma
+        </a>
+      }
     </nav>
 
     <div class="sidebar-user">

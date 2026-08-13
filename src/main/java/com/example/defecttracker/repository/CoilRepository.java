@@ -6,4 +6,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CoilRepository extends JpaRepository<Coil, String> {
+
+    java.util.Optional<Coil> findFirstByCoilIdIgnoreCase(String coilId);
+
+    java.util.Optional<Coil> findFirstByCoilIdEndingWithIgnoreCase(String suffix);
+
+    java.util.Optional<Coil> findFirstByCoilIdContainingIgnoreCase(String part);
 }

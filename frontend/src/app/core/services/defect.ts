@@ -5,6 +5,11 @@ import {
   AnalysisResponseDto,
   CreateTicketRequest,
   DamageTicket,
+  CoilHistory,
+  ConfirmGradeRequest,
+  ConfirmGradeResponse,
+  TicketQueueItem,
+  TicketQueueDetail,
 } from '../models/defect.model';
 
 const API = 'http://localhost:8080/api';
@@ -19,5 +24,21 @@ export class DefectService {
 
   createTicket(payload: CreateTicketRequest): Observable<DamageTicket> {
     return this.http.post<DamageTicket>(`${API}/tickets`, payload);
+  }
+
+  getCoilHistory(coilId: string): Observable<CoilHistory> {
+    return this.http.get<CoilHistory>(`${API}/tickets/history/${encodeURIComponent(coilId)}`);
+  }
+
+  confirmGrade(payload: ConfirmGradeRequest): Observable<ConfirmGradeResponse> {
+    return this.http.post<ConfirmGradeResponse>(`${API}/quality/decisions`, payload);
+  }
+
+  getTicketQueue(status: 'all' | 'pending' | 'decided' = 'all'): Observable<TicketQueueItem[]> {
+    return this.http.get<TicketQueueItem[]>(`${API}/tickets/queue`, { params: { status } });
+  }
+
+  getTicketQueueDetail(ticketNumber: string): Observable<TicketQueueDetail> {
+    return this.http.get<TicketQueueDetail>(`${API}/tickets/queue/${encodeURIComponent(ticketNumber)}`);
   }
 }
