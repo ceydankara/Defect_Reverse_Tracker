@@ -33,5 +33,5 @@ export const roleGuard = (roles: AppRole[]): CanActivateFn => () => {
   if (auth.hasAnyRole(roles)) {
     return true;
   }
-  return router.createUrlTree(['/dashboard']);
+  return router.createUrlTree(['/dashboard'], { queryParams: { denied: 'role' } });
 };

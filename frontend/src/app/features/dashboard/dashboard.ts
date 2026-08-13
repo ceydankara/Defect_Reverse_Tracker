@@ -1,6 +1,6 @@
 import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardStats } from '../../core/models/auth.model';
@@ -24,6 +24,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   stats: DashboardStats | null = null;
   loading = true;
   errorMessage = '';
+  accessDeniedMessage = '';
 
   private stageChart: Chart | null = null;
   private defectChart: Chart | null = null;
@@ -34,9 +35,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private dashboardService: DashboardService,
     public auth: AuthService,
+    private route: ActivatedRoute,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe((params) => {
+      if (params.get('denied') === 'role') {
+        this.accessDeniedMessage = 'Bu sayfaya erişim yetkiniz yok. Kalite paneli yalnızca kalite ve yönetici hesapları içindir.';
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { denied: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      }
+    });
+
     this.dashboardService.getStats().subscribe({
       next: (data) => {
         this.stats = data;

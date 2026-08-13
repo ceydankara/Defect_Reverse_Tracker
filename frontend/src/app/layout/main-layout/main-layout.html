@@ -32,7 +32,7 @@
         <div class="avatar">{{ auth.user()?.fullName?.charAt(0) || 'U' }}</div>
         <div>
           <strong>{{ auth.user()?.fullName }}</strong>
-          <span>{{ auth.user()?.role }}</span>
+          <span>{{ auth.roleLabel() }}</span>
         </div>
       </div>
       <button type="button" class="logout-btn" (click)="logout()">Çıkış Yap</button>
