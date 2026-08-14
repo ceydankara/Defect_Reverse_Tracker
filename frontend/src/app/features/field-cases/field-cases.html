@@ -1,0 +1,264 @@
+<div class="field-page">
+  <header class="page-header">
+    <div>
+      <h1>Müşteri / Saha Hasar Dosyaları</h1>
+      <p>Müşteriye ulaşmış bobinlerdeki şikâyetler — sorumluluk analizi ve ticari aksiyon önerisi (iade süreci değil)</p>
+    </div>
+    <a routerLink="/hasar-talep" [queryParams]="{ saha: '1' }" class="cta-btn">+ Saha Bildirimi Kaydet</a>
+  </header>
+
+  <div class="filter-tabs">
+    <button type="button" [class.active]="filter === 'open'" (click)="setFilter('open')">Açık Talepler</button>
+    <button type="button" [class.active]="filter === 'reviewing'" (click)="setFilter('reviewing')">İnceleniyor</button>
+    <button type="button" [class.active]="filter === 'resolved'" (click)="setFilter('resolved')">Sonuçlandı</button>
+    <button type="button" [class.active]="filter === 'all'" (click)="setFilter('all')">Tümü</button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="error-banner">{{ errorMessage }}</div>
+  }
+  @if (statusMessage) {
+    <div class="success-banner">{{ statusMessage }}</div>
+  }
+
+  <div class="queue-layout">
+    <aside class="case-list-panel panel-box">
+      <div class="panel-head">
+        <strong>Saha Dosya Kuyruğu</strong>
+        <span>{{ cases.length }} dosya</span>
+      </div>
+
+      @if (loadingList) {
+        <div class="empty-state">Liste yükleniyor...</div>
+      } @else if (cases.length === 0) {
+        <div class="empty-state">
+          Bu filtrede saha dosyası yok.
+          <a routerLink="/hasar-talep" [queryParams]="{ saha: '1' }">Saha bildirimi oluştur →</a>
+        </div>
+      } @else {
+        <div class="case-list">
+          @for (item of cases; track item.ticketNumber) {
+            <button type="button" class="case-row" [class.active]="isSelected(item)" (click)="selectCase(item)">
+              <div class="row-top">
+                <strong>{{ item.customerCompany }}</strong>
+                <span class="status-badge" [class]="statusBadgeClass(item.caseStatus)">
+                  {{ item.caseStatusLabel }}
+                </span>
+              </div>
+              <div class="row-coil">{{ item.batchId }}</div>
+              <div class="row-meta">{{ item.defectType }}</div>
+              <div class="row-date">{{ formatDate(item.createdAt) }}</div>
+              @if (item.finalGradeLabel) {
+                <div class="row-grade">{{ item.finalGradeLabel }}</div>
+              }
+              @if (item.commercialActionLabel) {
+                <div class="row-action">{{ item.commercialActionLabel }}</div>
+              }
+            </button>
+          }
+        </div>
+      }
+    </aside>
+
+    <section class="detail-panel">
+      @if (!selectedCase) {
+        <div class="panel-box empty-detail">
+          <p>Sol listeden bir saha hasar dosyası seçin.</p>
+        </div>
+      } @else if (loadingDetail) {
+        <div class="panel-box empty-detail"><p>Dosya detayı yükleniyor...</p></div>
+      } @else if (detail) {
+        <div class="panel-box case-header-card">
+          <div class="header-row">
+            <div>
+              <div class="panel-title-sub">SAHA HASAR DOSYASI</div>
+              <h2>{{ detail.ticket.customerCompany }}</h2>
+              <div class="contact-line">
+                {{ detail.ticket.reporterName }}
+                @if (detail.ticket.contactPhone) {
+                  <span>· {{ detail.ticket.contactPhone }}</span>
+                }
+              </div>
+            </div>
+            <span class="status-badge large" [class]="statusBadgeClass(detail.ticket.caseStatus)">
+              {{ detail.ticket.caseStatusLabel }}
+            </span>
+          </div>
+
+          <div class="summary-grid">
+            <div><span>Bobin ID</span><strong>{{ detail.ticket.batchId }}</strong></div>
+            <div><span>Hasar Türü</span><strong>{{ detail.ticket.defectType }}</strong></div>
+            <div><span>Dosya No</span><strong>{{ detail.ticket.ticketNumber }}</strong></div>
+            <div><span>Sevkiyat Kararı</span><strong>{{ detail.priorQualityDecision }}</strong></div>
+            <div><span>Bildirim</span><strong>{{ formatDate(detail.ticket.createdAt) }}</strong></div>
+            @if (detail.priorReportCount > 0) {
+              <div class="span-2 history-hint"><span>Geçmiş</span><strong>{{ detail.coilHistorySummary }}</strong></div>
+            }
+          </div>
+        </div>
+
+        @if (detail.ticket.extraNotes) {
+          <div class="panel-box statement-box">
+            <div class="box-title">Müşteri / Saha Beyanı</div>
+            <p>{{ detail.ticket.extraNotes }}</p>
+          </div>
+        }
+
+        <div class="panel-box responsibility-card">
+          <div class="panel-title-sub">SORUMLULUK ANALİZİ</div>
+          <p class="resp-summary">{{ detail.responsibility.summary }}</p>
+
+          <div class="resp-bars">
+            <div class="resp-row">
+              <span>Üretim Kaynaklı</span>
+              <div class="bar-track"><div class="bar prod" [style.width.%]="detail.responsibility.productionPct"></div></div>
+              <strong>%{{ detail.responsibility.productionPct }}</strong>
+            </div>
+            <div class="resp-row">
+              <span>Lojistik Kaynaklı</span>
+              <div class="bar-track"><div class="bar log" [style.width.%]="detail.responsibility.logisticsPct"></div></div>
+              <strong>%{{ detail.responsibility.logisticsPct }}</strong>
+            </div>
+            <div class="resp-row">
+              <span>Müşteri / Saha Kullanımı</span>
+              <div class="bar-track"><div class="bar cust" [style.width.%]="detail.responsibility.customerPct"></div></div>
+              <strong>%{{ detail.responsibility.customerPct }}</strong>
+            </div>
+          </div>
+
+          <ul class="indicator-list">
+            @for (ind of detail.responsibility.indicators; track ind) {
+              <li>{{ ind }}</li>
+            }
+          </ul>
+
+          <div class="action-alert-box">
+            <div class="alert-title">Önerilen Ticari Aksiyon</div>
+            <div class="alert-body">{{ detail.responsibility.recommendedAction }}</div>
+          </div>
+        </div>
+
+        @if (detail.responsibility.remediationPlan) {
+          <div class="panel-box remediation-panel" [class.production-case]="isProductionDominant()">
+            <div class="rem-header">
+              <div>
+                <div class="panel-title-sub">TELAFİ & İŞ AKIŞI</div>
+                <h3>{{ detail.responsibility.remediationPlan.dominantLabel }}</h3>
+              </div>
+              <div class="rem-header-meta">
+                <div class="quality-snapshot" title="Sevk öncesi fabrika kalite kaydı — yalnızca görüntüleme">
+                  <span class="qs-label">Sevk öncesi kalite</span>
+                  <strong>{{ sevkQualityLabel() }}</strong>
+                </div>
+                <span class="dominant-badge" [class]="dominantBadgeClass()">
+                  {{ isProductionDominant() ? 'Fabrika sorumluluğu' : (detail.responsibility.dominantSource === 'LOGISTICS' ? 'Lojistik profili' : 'Müşteri sahası') }}
+                </span>
+              </div>
+            </div>
+
+            @if (isProductionDominant()) {
+              <div class="production-notice">
+                Üretim kaynaklı vaka — hatayı kabul edin, müşteriye telafi sunun ve mutlaka CAPA açın.
+              </div>
+            }
+
+            <ol class="workflow-steps">
+              @for (step of detail.responsibility.remediationPlan.workflowSteps; track step; let i = $index) {
+                <li>
+                  <span class="step-no">{{ i + 1 }}</span>
+                  <span>{{ step }}</span>
+                </li>
+              }
+            </ol>
+
+            <div class="action-cards">
+              @for (opt of detail.responsibility.remediationPlan.options; track opt.code) {
+                <button type="button"
+                        class="action-card"
+                        [class.active]="isActionSelected(opt.code)"
+                        [class.recommended]="opt.recommended"
+                        (click)="selectAction(opt)">
+                  <strong>{{ opt.label }}</strong>
+                  @if (opt.recommended) {
+                    <span class="rec-tag">Önerilen</span>
+                  }
+                  <small>{{ opt.description }}</small>
+                </button>
+              }
+            </div>
+
+            @if (selectedAction === 'CAPA' || capaReference || isProductionDominant()) {
+              <div class="capa-row">
+                <label>CAPA Referans No</label>
+                <input type="text" class="dark-input" [(ngModel)]="capaReference"
+                       placeholder="Boş bırakılırsa otomatik üretilir (CAPA-2026-...)" />
+              </div>
+            }
+
+            <div class="notes-row">
+              <label>Çözüm / telafi notu</label>
+              <textarea class="dark-textarea" rows="2" [(ngModel)]="resolutionNotes"
+                        placeholder="Örn: Kredi notu #KN-4521, müşteri kabul etti / CAPA bakım yönlendirildi..."></textarea>
+            </div>
+
+            <label class="resolve-check">
+              <input type="checkbox" [(ngModel)]="markResolvedOnSave" />
+              Kayıt sonrası dosyayı sonuçlandır
+            </label>
+
+            @if (detail.ticket.commercialActionLabel) {
+              <div class="saved-resolution">
+                Kayıtlı aksiyon: <strong>{{ detail.ticket.commercialActionLabel }}</strong>
+                @if (detail.ticket.capaReference) {
+                  <span> · CAPA: {{ detail.ticket.capaReference }}</span>
+                }
+              </div>
+            }
+
+            <div class="rem-footer">
+              <button type="button" class="btn-submit" (click)="saveResolution()"
+                      [disabled]="!selectedAction || savingResolution">
+                {{ savingResolution ? 'Kaydediliyor...' : 'Telafi Aksiyonunu Kaydet' }}
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (detail.analysis || detail.analysisHeadline) {
+          <div class="panel-box analysis-compact">
+            <div class="analysis-compact-body">
+              <div>
+                <div class="panel-title-sub">HASAR ANALİZİ</div>
+                @if (analysisHeadline()) {
+                  <p class="analysis-teaser">{{ analysisHeadline() }}</p>
+                } @else {
+                  <p class="analysis-teaser muted">Detaylı sensör ve kök neden analizi hasar analizi ekranında.</p>
+                }
+              </div>
+              @if (auth.canAnalyze()) {
+                <a [routerLink]="['/hasar-analiz']" [queryParams]="analysisQueryParams()" class="btn-analysis-start">
+                  Ana Analiz Ekranına Git →
+                </a>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="panel-box action-row">
+          <div class="status-actions">
+            <span class="action-label">Dosya durumu:</span>
+            @if (detail.ticket.caseStatus !== 'IN_REVIEW') {
+              <button type="button" class="btn-outline" (click)="setStatus('IN_REVIEW')">İncelemeye Al</button>
+            }
+            @if (detail.ticket.caseStatus !== 'RESOLVED') {
+              <button type="button" class="btn-outline success" (click)="setStatus('RESOLVED')">Sonuçlandır</button>
+            }
+            @if (detail.ticket.caseStatus !== 'OPEN') {
+              <button type="button" class="btn-ghost" (click)="setStatus('OPEN')">Yeniden Aç</button>
+            }
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+</div>

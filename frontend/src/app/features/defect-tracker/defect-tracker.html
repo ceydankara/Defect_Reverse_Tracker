@@ -1,8 +1,10 @@
 <div class="tracker-container">
   <header class="module-header">
     <div>
-      <h1>Hasar Talep Formu</h1>
-      <p>Hasarı bildirin — kalite ekibi değerlendirme ve sınıflandırmayı ayrı ekranda yapar.</p>
+      <h1>{{ isFieldReport ? 'Müşteri / Saha Hasar Bildirimi' : 'Hasar Talep Formu' }}</h1>
+      <p>{{ isFieldReport
+        ? 'Müşteriye ulaşmış bobin şikâyetini kaydedin — saha hasar dosyası oluşturulur.'
+        : 'Hasarı bildirin — kalite ekibi değerlendirme ve sınıflandırmayı ayrı ekranda yapar.' }}</p>
     </div>
   </header>
 
@@ -10,7 +12,9 @@
     <div class="panel-box ticket-form-card">
       <div class="form-header">
         <h2 class="form-main-title">Hasar Talep Formu</h2>
-        <p class="form-sub-title">Formu doldurup gönderin. Talebiniz kalite kuyruğuna düşer.</p>
+        <p class="form-sub-title">{{ isFieldReport
+          ? 'Bildirim saha hasar dosyaları kuyruğuna düşer; iade süreci başlatılmaz.'
+          : 'Formu doldurup gönderin. Talebiniz kalite kuyruğuna düşer.' }}</p>
       </div>
 
       <div class="form-section">
@@ -24,13 +28,30 @@
             <label>Departman *</label>
             <select [(ngModel)]="department" class="dark-input">
               <option value="" disabled selected>Seçin...</option>
-              <option value="Bakım-Onarım">Bakım-Onarım</option>
-              <option value="Kalite Kontrol">Kalite Kontrol</option>
-              <option value="Üretim Planlama">Üretim Planlama</option>
-              <option value="Lojistik / Depo">Lojistik / Depo</option>
+              @if (isFieldReport) {
+                <option value="Satış / Müşteri İlişkileri">Satış / Müşteri İlişkileri</option>
+                <option value="Kalite Kontrol">Kalite Kontrol</option>
+              } @else {
+                <option value="Bakım-Onarım">Bakım-Onarım</option>
+                <option value="Kalite Kontrol">Kalite Kontrol</option>
+                <option value="Üretim Planlama">Üretim Planlama</option>
+                <option value="Lojistik / Depo">Lojistik / Depo</option>
+              }
             </select>
           </div>
         </div>
+        @if (isFieldReport) {
+          <div class="form-grid-2 field-extra">
+            <div class="input-group">
+              <label>Müşteri Firması *</label>
+              <input type="text" [(ngModel)]="customerCompany" class="dark-input" placeholder="Tosyalı Holding" />
+            </div>
+            <div class="input-group">
+              <label>İletişim Telefonu</label>
+              <input type="text" [(ngModel)]="contactPhone" class="dark-input" placeholder="+90 ..." />
+            </div>
+          </div>
+        }
       </div>
 
       <div class="form-section">

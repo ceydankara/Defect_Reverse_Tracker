@@ -19,4 +19,8 @@ public interface DamageTicketRepository extends JpaRepository<DamageTicket, Long
     List<DamageTicket> findTop5ByOrderByCreatedAtDesc();
 
     List<DamageTicket> findAllByOrderByCreatedAtDesc();
+
+    List<DamageTicket> findByDetectedLocationOrderByCreatedAtDesc(String detectedLocation);
+
+    long countByDetectedLocation(String detectedLocation);
 }

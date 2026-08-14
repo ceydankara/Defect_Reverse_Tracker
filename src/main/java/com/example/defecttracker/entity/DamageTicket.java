@@ -38,11 +38,33 @@ public class DamageTicket {
     @Column(name = "extra_notes", columnDefinition = "TEXT")
     private String extraNotes;
 
+    @Column(name = "customer_company")
+    private String customerCompany;
+
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
+    /** Saha dosyası durumu: OPEN, IN_REVIEW, RESOLVED (yalnızca müşteri/saha talepleri) */
+    @Column(name = "case_status")
+    private String caseStatus;
+
+    /** CREDIT, REPLACEMENT, DISCOUNT, REJECT_CLAIM, CAPA */
+    @Column(name = "commercial_action")
+    private String commercialAction;
+
+    @Column(name = "capa_reference")
+    private String capaReference;
+
+    @Column(name = "resolution_notes", columnDefinition = "TEXT")
+    private String resolutionNotes;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 }

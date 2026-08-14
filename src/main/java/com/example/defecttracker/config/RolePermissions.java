@@ -19,4 +19,8 @@ public final class RolePermissions {
     public static boolean canGradeQuality(User user) {
         return user != null && user.getRole() != null && QUALITY_ROLES.contains(user.getRole());
     }
+
+    public static boolean canManageFieldCases(User user) {
+        return canGradeQuality(user);
+    }
 }

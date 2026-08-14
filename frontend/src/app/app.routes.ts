@@ -7,6 +7,7 @@ import { DashboardComponent } from './features/dashboard/dashboard';
 import { DefectTrackerComponent } from './features/defect-tracker/defect-tracker';
 import { DamageAnalysisComponent } from './features/damage-analysis/damage-analysis';
 import { QualityQueueComponent } from './features/quality-queue/quality-queue';
+import { FieldCasesComponent } from './features/field-cases/field-cases';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, canActivate: [guestGuard] },
@@ -26,6 +27,11 @@ export const routes: Routes = [
       {
         path: 'kalite-siniflandirma',
         component: QualityQueueComponent,
+        canActivate: [roleGuard(QUALITY_ROLES)],
+      },
+      {
+        path: 'saha-hasar-dosyalari',
+        component: FieldCasesComponent,
         canActivate: [roleGuard(QUALITY_ROLES)],
       },
     ],

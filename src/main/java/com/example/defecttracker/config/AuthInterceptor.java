@@ -46,6 +46,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (path.startsWith("/api/tickets/queue") && !RolePermissions.canGradeQuality(user)) {
             return forbidden(response, "Kalite kuyruğu için yetkiniz yok.");
         }
+        if (path.startsWith("/api/field-cases") && !RolePermissions.canManageFieldCases(user)) {
+            return forbidden(response, "Saha hasar dosyaları için yetkiniz yok.");
+        }
 
         return true;
     }
