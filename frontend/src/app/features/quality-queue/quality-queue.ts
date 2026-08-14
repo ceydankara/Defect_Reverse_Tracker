@@ -67,6 +67,8 @@ export class QualityQueueComponent implements OnInit {
             this.selectTicket(match);
             return;
           }
+          this.loadTicketByNumber(selectTicketNumber);
+          return;
         }
 
         if (!this.selectedTicket && items.length > 0) {
@@ -96,6 +98,28 @@ export class QualityQueueComponent implements OnInit {
     this.analysis = null;
     this.analysisHeadline = '';
     this.loadTickets();
+  }
+
+  loadTicketByNumber(ticketNumber: string): void {
+    this.loadingDetail = true;
+    this.defectService.getTicketQueueDetail(ticketNumber).subscribe({
+      next: (detail) => {
+        this.selectedTicket = detail.ticket;
+        this.tickets = [detail.ticket];
+        this.qualityGrading = detail.qualityGrading ?? null;
+        this.analysis = detail.analysis ?? null;
+        this.analysisHeadline = detail.analysisHeadline ?? '';
+        this.selectedFinalGrade = detail.ticket.finalGrade
+          ?? detail.qualityGrading?.recommendedGrade
+          ?? '';
+        this.gradeConfirmed = detail.ticket.gradeStatus === 'DECIDED';
+        this.loadingDetail = false;
+      },
+      error: () => {
+        this.loadingDetail = false;
+        this.errorMessage = 'Saha dosyası kalite ekranında yüklenemedi.';
+      },
+    });
   }
 
   selectTicket(ticket: TicketQueueItem): void {

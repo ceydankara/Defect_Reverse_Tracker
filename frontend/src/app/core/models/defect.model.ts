@@ -60,6 +60,8 @@ export interface CreateTicketRequest {
   detectedLocation: string;
   defectType: string;
   extraNotes?: string;
+  customerCompany?: string;
+  contactPhone?: string;
 }
 
 export interface DamageTicket {
@@ -146,4 +148,66 @@ export interface TicketQueueDetail {
   qualityGrading?: QualityGrading;
   analysisHeadline?: string;
   analysis?: AnalysisResponseDto;
+}
+
+export interface FieldCaseItem {
+  ticketNumber: string;
+  batchId: string;
+  defectType: string;
+  customerCompany: string;
+  reporterName: string;
+  contactPhone?: string;
+  extraNotes?: string;
+  caseStatus: 'OPEN' | 'IN_REVIEW' | 'RESOLVED';
+  caseStatusLabel: string;
+  gradeStatus: 'PENDING' | 'DECIDED';
+  finalGradeLabel?: string;
+  createdAt: string;
+  commercialAction?: string;
+  commercialActionLabel?: string;
+  capaReference?: string;
+  resolutionNotes?: string;
+}
+
+export interface ResponsibilityAnalysis {
+  productionPct: number;
+  logisticsPct: number;
+  customerPct: number;
+  summary: string;
+  recommendedAction: string;
+  indicators: string[];
+  dominantSource?: 'PRODUCTION' | 'LOGISTICS' | 'CUSTOMER';
+  remediationPlan?: RemediationPlan;
+}
+
+export interface RemediationOption {
+  code: string;
+  label: string;
+  description: string;
+  recommended: boolean;
+}
+
+export interface RemediationPlan {
+  dominantSource: string;
+  dominantLabel: string;
+  workflowSteps: string[];
+  options: RemediationOption[];
+}
+
+export interface FieldCaseResolutionRequest {
+  commercialAction: string;
+  capaReference?: string;
+  resolutionNotes?: string;
+  markResolved?: boolean;
+}
+
+export interface FieldCaseDetail {
+  ticket: FieldCaseItem;
+  analysis?: AnalysisResponseDto;
+  analysisHeadline?: string;
+  responsibility: ResponsibilityAnalysis;
+  priorQualityDecision: string;
+  coilHistorySummary?: string;
+  priorReportCount: number;
+  relatedTicketNumbers: string[];
 }

@@ -10,6 +10,9 @@ import {
   ConfirmGradeResponse,
   TicketQueueItem,
   TicketQueueDetail,
+  FieldCaseDetail,
+  FieldCaseItem,
+  FieldCaseResolutionRequest,
 } from '../models/defect.model';
 
 const API = 'http://localhost:8080/api';
@@ -40,5 +43,27 @@ export class DefectService {
 
   getTicketQueueDetail(ticketNumber: string): Observable<TicketQueueDetail> {
     return this.http.get<TicketQueueDetail>(`${API}/tickets/queue/${encodeURIComponent(ticketNumber)}`);
+  }
+
+  getFieldCases(status: 'all' | 'open' | 'reviewing' | 'resolved' = 'all'): Observable<FieldCaseItem[]> {
+    return this.http.get<FieldCaseItem[]>(`${API}/field-cases`, { params: { status } });
+  }
+
+  getFieldCaseDetail(ticketNumber: string): Observable<FieldCaseDetail> {
+    return this.http.get<FieldCaseDetail>(`${API}/field-cases/${encodeURIComponent(ticketNumber)}`);
+  }
+
+  updateFieldCaseStatus(ticketNumber: string, caseStatus: string): Observable<FieldCaseItem> {
+    return this.http.patch<FieldCaseItem>(
+      `${API}/field-cases/${encodeURIComponent(ticketNumber)}/status`,
+      { caseStatus },
+    );
+  }
+
+  applyFieldCaseResolution(ticketNumber: string, payload: FieldCaseResolutionRequest): Observable<FieldCaseDetail> {
+    return this.http.patch<FieldCaseDetail>(
+      `${API}/field-cases/${encodeURIComponent(ticketNumber)}/resolution`,
+      payload,
+    );
   }
 }

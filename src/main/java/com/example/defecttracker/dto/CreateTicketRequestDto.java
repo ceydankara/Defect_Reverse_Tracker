@@ -10,4 +10,6 @@ public class CreateTicketRequestDto {
     private String detectedLocation;
     private String defectType;
     private String extraNotes;
+    private String customerCompany;
+    private String contactPhone;
 }

@@ -50,6 +50,7 @@ public class TicketQueueService {
         }
 
         return grouped.values().stream()
+                .filter(tickets -> !tickets.stream().allMatch(FieldCaseService::isFieldCase))
                 .map(this::mergeCoilGroup)
                 .filter(item -> matchesStatus(item, normalized))
                 .sorted(Comparator.comparing(TicketQueueItemDto::getCreatedAt,
