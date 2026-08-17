@@ -237,11 +237,15 @@ export class FieldCasesComponent implements OnInit {
   }
 
   analysisQueryParams(): Record<string, string> {
-    return {
+    const params: Record<string, string> = {
       coil: this.selectedCase?.batchId ?? '',
       auto: '1',
       from: 'saha',
     };
+    if (this.selectedCase?.ticketNumber) {
+      params['ticket'] = this.selectedCase.ticketNumber;
+    }
+    return params;
   }
 
   analysisHeadline(): string {

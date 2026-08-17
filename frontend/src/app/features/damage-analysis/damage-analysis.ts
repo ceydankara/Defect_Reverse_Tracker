@@ -41,6 +41,8 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
   errorMessage = '';
   headline = '';
   fromQuality = false;
+  fromFieldCase = false;
+  returnTicket = '';
   autoStarted = false;
   currentSteelGrade = '';
   selectedSteelGrade = '';
@@ -83,10 +85,12 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
       const coil = params.get('coil');
       const auto = params.get('auto') === '1';
       this.fromQuality = params.get('from') === 'kalite';
+      this.fromFieldCase = params.get('from') === 'saha';
+      this.returnTicket = params.get('ticket') ?? '';
 
       if (coil) {
         this.batchId = coil;
-        if (auto || this.fromQuality) {
+        if (auto || this.fromQuality || this.fromFieldCase) {
           this.autoStarted = true;
           this.onStartAnalysis();
         }
@@ -102,6 +106,11 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
 
   ngOnDestroy(): void {
     this.chart?.destroy();
+  }
+
+  fieldCaseReturnQueryParams(): Record<string, string> {
+    if (!this.returnTicket) return {};
+    return { ticket: this.returnTicket };
   }
 
   onStartAnalysis(): void {
