@@ -22,6 +22,10 @@ public class User {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    /** Örn: Kalite Uzmanı, Kalite Müdürü, Satış Temsilcisi */
+    @Column(name = "job_title", length = 80)
+    private String jobTitle;
+
     @Column(nullable = false, length = 30)
     private String role;
 

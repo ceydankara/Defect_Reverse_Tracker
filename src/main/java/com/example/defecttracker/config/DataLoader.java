@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 @Slf4j
@@ -46,6 +47,7 @@ public class DataLoader implements CommandLineRunner {
     private final DamageTicketRepository ticketRepository;
     private final QualityGradeRecordRepository gradeRecordRepository;
     private final AuthService authService;
+    private final FieldCaseService fieldCaseService;
 
     @Value("${app.seed.reset:true}")
     private boolean seedReset;
@@ -60,12 +62,35 @@ public class DataLoader implements CommandLineRunner {
             clearDemoData();
             seedDemoDataset();
             log.info("Demo veri seti yüklendi.");
-            return;
-        }
-
-        if (coilRepository.count() == 0) {
+        } else if (coilRepository.count() == 0) {
             seedDemoDataset();
         }
+
+        fieldCaseService.backfillPreShipmentGradesForAllFieldCases();
+        refreshLegacyInspectorNames();
+    }
+
+    /** Eski demo kayıtlarındaki genel unvanları kişi adlarıyla günceller */
+    private void refreshLegacyInspectorNames() {
+        Map<String, String> byCoil = Map.of(
+                "BOBIN-2026-9070", "Kalite Uzmanı Ceyda Ankara",
+                "BOBIN-2026-9050", "Kalite Uzmanı Ayşe Korkmaz",
+                "BOBIN-2026-9060", "Kalite Uzmanı Ayşe Korkmaz",
+                "BOBIN-2026-9080", "Kalite Müdürü Mehmet Yılmaz",
+                "BOBIN-2026-9090", "Kalite Uzmanı Ceyda Ankara"
+        );
+        byCoil.forEach((coilId, inspector) ->
+                gradeRecordRepository.findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(coilId)
+                        .ifPresent(record -> {
+                            record.setInspectorName(inspector);
+                            gradeRecordRepository.save(record);
+                        }));
+        gradeRecordRepository.findAll().stream()
+                .filter(r -> "Kalite Kontrol Uzmanı".equals(r.getInspectorName()))
+                .forEach(r -> {
+                    r.setInspectorName("Kalite Uzmanı Ayşe Korkmaz");
+                    gradeRecordRepository.save(r);
+                });
     }
 
     private void clearDemoData() {
@@ -88,22 +113,26 @@ public class DataLoader implements CommandLineRunner {
         seedCoil9070();
         seedCoil9080();
         seedCoil9090();
+        seedShippedCoilQualityGrades();
         seedInternalTickets();
         seedFieldCases();
         seedQualityDecisions();
     }
 
     private void seedUsers() {
-        upsertUser("admin", "admin123", "Sistem Yöneticisi", "ADMIN");
-        upsertUser("kalite", "kalite123", "Kalite Kontrol Uzmanı", "QUALITY");
-        upsertUser("bakim", "bakim123", "Bakım Operatörü", "MAINTENANCE");
+        upsertUser("admin", "admin123", "Mehmet Yılmaz", "Kalite Müdürü", "ADMIN");
+        upsertUser("ceyda", "ceyda123", "Ceyda Ankara", "Kalite Uzmanı", "QUALITY");
+        upsertUser("kalite", "kalite123", "Ayşe Korkmaz", "Kalite Uzmanı", "QUALITY");
+        upsertUser("bakim", "bakim123", "Ali Demir", "Bakım Operatörü", "MAINTENANCE");
+        upsertUser("satis", "satis123", "Deniz Arslan", "Satış Temsilcisi", "SALES");
     }
 
-    private void upsertUser(String username, String password, String fullName, String role) {
+    private void upsertUser(String username, String password, String fullName, String jobTitle, String role) {
         User user = userRepository.findByUsername(username).orElseGet(User::new);
         user.setUsername(username);
         user.setPasswordHash(authService.hashPassword(password));
         user.setFullName(fullName);
+        user.setJobTitle(jobTitle);
         user.setRole(role);
         user.setActive(true);
         userRepository.save(user);
@@ -303,7 +332,7 @@ public class DataLoader implements CommandLineRunner {
                 "Sevk sonrası ambalaj açılışında yüzey çiziği — lojistik kaynaklı kabul edildi.",
                 LocalDateTime.now().minusDays(12));
 
-        seedFieldCase("TKT-FIELD-080", "BOBIN-2026-9080", "Erdemir Çelik",
+        seedFieldCase("TKT-FIELD-080", "BOBIN-2026-9080", "Atlas Metal Sanayi",
                 "Mehmet Kaya", "+90 372 555 0202",
                 "Kenar Bozukluğu", FieldCaseService.STATUS_IN_REVIEW,
                 null, null, null,
@@ -325,29 +354,31 @@ public class DataLoader implements CommandLineRunner {
     private void seedQualityDecisions() {
         seedQualityGrade("BOBIN-2026-9070", "TKT-2026-070",
                 QualityGradingService.SCRAP, QualityGradingService.SCRAP,
-                "Kalite Kontrol Uzmanı",
+                "Kalite Uzmanı Ceyda Ankara",
                 "Sıcak hadde çatlak — sevkiyat öncesi hurda ayrıştırması onaylandı.",
                 LocalDateTime.now().minusDays(7));
+    }
 
-        // Sevk edilmiş saha bobinleri — fabrikadan çıkıştaki kalite kaydı (salt okunur)
+    /** Müşteriye sevk edilmiş bobinler — sevk öncesi birincil kalite onayı (zorunlu). */
+    private void seedShippedCoilQualityGrades() {
         seedQualityGrade("BOBIN-2026-9050", null,
                 QualityGradingService.CUSTOMER, QualityGradingService.CUSTOMER,
-                "Kalite Kontrol Uzmanı",
+                "Kalite Uzmanı Ayşe Korkmaz",
                 "Sevk öncesi birincil kalite onayı — sertifika düzenlendi.",
                 LocalDateTime.now().minusDays(18));
         seedQualityGrade("BOBIN-2026-9060", null,
                 QualityGradingService.CUSTOMER, QualityGradingService.CUSTOMER,
-                "Kalite Kontrol Uzmanı",
+                "Kalite Uzmanı Ayşe Korkmaz",
                 "Sevk öncesi birincil kalite onayı.",
                 LocalDateTime.now().minusDays(20));
         seedQualityGrade("BOBIN-2026-9080", null,
                 QualityGradingService.CUSTOMER, QualityGradingService.CUSTOMER,
-                "Kalite Kontrol Uzmanı",
+                "Kalite Müdürü Mehmet Yılmaz",
                 "Sevk öncesi birinci kalite onayı — sonradan müşteri şikâyeti ile çelişiyor (KK kaçırıldı).",
                 LocalDateTime.now().minusDays(22));
         seedQualityGrade("BOBIN-2026-9090", null,
                 QualityGradingService.CUSTOMER, QualityGradingService.CUSTOMER,
-                "Kalite Kontrol Uzmanı",
+                "Kalite Uzmanı Ceyda Ankara",
                 "Sevk öncesi birincil kalite onayı.",
                 LocalDateTime.now().minusDays(16));
     }

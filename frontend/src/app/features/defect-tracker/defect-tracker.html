@@ -1,10 +1,10 @@
 <div class="tracker-container">
   <header class="module-header">
     <div>
-      <h1>{{ isFieldReport ? 'Müşteri / Saha Hasar Bildirimi' : 'Hasar Talep Formu' }}</h1>
+      <h1>{{ isFieldReport ? 'Müşteri Şikâyet Bildirimi' : 'Hasar Talep Formu' }}</h1>
       <p>{{ isFieldReport
-        ? 'Müşteriye ulaşmış bobin şikâyetini kaydedin — saha hasar dosyası oluşturulur.'
-        : 'Hasarı bildirin — kalite ekibi değerlendirme ve sınıflandırmayı ayrı ekranda yapar.' }}</p>
+        ? 'Müşteriye ulaşmış bobin şikâyetini kaydedin — müşteri şikâyet dosyası oluşturulur.'
+        : 'Fabrikada hasarı bildirin — bobin fabrika kalite kuyruğuna düşer.' }}</p>
     </div>
   </header>
 
@@ -13,8 +13,8 @@
       <div class="form-header">
         <h2 class="form-main-title">Hasar Talep Formu</h2>
         <p class="form-sub-title">{{ isFieldReport
-          ? 'Bildirim saha hasar dosyaları kuyruğuna düşer; iade süreci başlatılmaz.'
-          : 'Formu doldurup gönderin. Talebiniz kalite kuyruğuna düşer.' }}</p>
+          ? 'Bildirim müşteri şikâyet dosyaları kuyruğuna düşer.'
+          : 'Formu doldurup gönderin. Talebiniz fabrika kalite kuyruğuna düşer.' }}</p>
       </div>
 
       <div class="form-section">
@@ -109,7 +109,7 @@
       <h2>Talep Oluşturuldu</h2>
       <p class="ticket-ref">Ticket: <strong>{{ ticketNumber }}</strong></p>
       <p>Bobin <strong>{{ batchId }}</strong> kalite değerlendirme kuyruğuna eklendi.</p>
-      <p class="hint">Kalite ekibi hasar tespitini inceleyip sınıflandırma kararı verecektir.</p>
+      <p class="hint">Fabrika kalite ekibi hasar tespitini inceleyip sınıflandırma kararı verecektir.</p>
       <button type="button" class="btn-submit-ticket" (click)="openNewTicketForm()">← Yeni Talep Oluştur</button>
     </div>
   }

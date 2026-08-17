@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { AuthUser, LoginRequest } from '../models/auth.model';
-import { ANALYSIS_ROLES, AppRole, QUALITY_ROLES, ROLE_LABELS } from '../auth/roles';
+import { ANALYSIS_ROLES, AppRole, FIELD_CASE_ROLES, formatInspectorName, QUALITY_ROLES, ROLE_LABELS } from '../auth/roles';
 
 const STORAGE_KEY = 'drt_auth';
 const API = 'http://localhost:8080/api/auth';
@@ -53,8 +53,23 @@ export class AuthService {
     return this.hasAnyRole(QUALITY_ROLES);
   }
 
+  canManageFieldCases(): boolean {
+    return this.hasAnyRole(FIELD_CASE_ROLES);
+  }
+
+  /** Karar veren satırı: "Kalite Uzmanı Ceyda Ankara" */
+  inspectorDisplayName(): string {
+    const u = this.userSignal();
+    if (!u) return 'Kalite Kontrol';
+    return formatInspectorName(u.jobTitle, u.fullName);
+  }
+
   roleLabel(): string {
-    const role = this.userSignal()?.role as AppRole | undefined;
+    const u = this.userSignal();
+    if (u?.jobTitle?.trim()) {
+      return u.jobTitle.trim();
+    }
+    const role = u?.role as AppRole | undefined;
     return role ? (ROLE_LABELS[role] ?? role) : '';
   }
 

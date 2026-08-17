@@ -158,7 +158,7 @@ export class QualityQueueComponent implements OnInit {
         if (err.status === 0) {
           this.errorMessage = 'Backend erişilemiyor. Port 8080\'de Spring Boot çalıştığından emin olun.';
         } else if (err.status === 403) {
-          this.errorMessage = 'Kalite ekranı için yetkiniz yok. kalite veya admin hesabıyla giriş yapın.';
+          this.errorMessage = 'Fabrika kalite kuyruğu için yetkiniz yok. kalite veya admin hesabıyla giriş yapın.';
         } else if (err.status === 401) {
           this.errorMessage = 'Oturum süresi doldu. Lütfen tekrar giriş yapın.';
         } else if (err.status === 404) {
@@ -190,7 +190,7 @@ export class QualityQueueComponent implements OnInit {
       coilId: this.selectedTicket.batchId,
       finalGrade: this.selectedFinalGrade,
       recommendedGrade: this.qualityGrading.recommendedGrade,
-      inspectorName: this.auth.user()?.fullName ?? 'Kalite Kontrol',
+      inspectorName: this.auth.inspectorDisplayName(),
       notes: this.gradeNotes,
       ticketNumber: this.selectedTicket.ticketNumber,
     }).subscribe({

@@ -20,9 +20,11 @@ export class LoginComponent implements OnInit {
   backendOnline = false;
 
   readonly demoAccounts = [
-    { user: 'admin', pass: 'admin123', role: 'Yönetici — tüm paneller' },
-    { user: 'kalite', pass: 'kalite123', role: 'Kalite — sınıflandırma + analiz' },
-    { user: 'bakim', pass: 'bakim123', role: 'Bakım — talep + analiz (kalite yok)' },
+    { user: 'admin', pass: 'admin123', role: 'Mehmet Y. — Kalite Müdürü (tüm paneller)' },
+    { user: 'ceyda', pass: 'ceyda123', role: 'Ceyda Ankara — Kalite Uzmanı' },
+    { user: 'kalite', pass: 'kalite123', role: 'Ayşe Korkmaz — Kalite Uzmanı' },
+    { user: 'bakim', pass: 'bakim123', role: 'Ali Demir — Bakım (talep + analiz)' },
+    { user: 'satis', pass: 'satis123', role: 'Deniz Arslan — Satış (şikâyet dosyaları)' },
   ];
 
   constructor(

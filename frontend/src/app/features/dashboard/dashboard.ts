@@ -82,6 +82,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(4, (value / total) * 100);
   }
 
+  sourcePercent(value: number): number {
+    if (!this.stats) return 0;
+    const total = this.stats.productionAnomalyCount + this.stats.logisticsCaseCount;
+    if (!total) return 0;
+    return Math.round((value / total) * 100);
+  }
+
   formatDefectCode(code: string): string {
     return code.replace(/^DEF_/, '').replace(/_/g, ' ');
   }
@@ -116,6 +123,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.stats.anomaliesByStage.map((x) => x.count),
         ['#ff4d6d', '#ff758f', '#ff8fa3', '#ffb3c1'],
         (chart) => (this.stageChart = chart),
+        true,
       );
     }
 
@@ -187,12 +195,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           plugins: { legend: { display: false } },
           scales: {
             x: {
-              ticks: { color: '#8a9bb5', font: { size: 11 } },
+              ticks: { color: '#64748b', font: { size: 11 } },
               grid: { display: false },
             },
             y: {
-              ticks: { color: '#8a9bb5', precision: 0, font: { size: 11 } },
-              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#64748b', precision: 0, font: { size: 11 } },
+              grid: { color: 'rgba(15, 23, 42, 0.08)' },
             },
           },
         },

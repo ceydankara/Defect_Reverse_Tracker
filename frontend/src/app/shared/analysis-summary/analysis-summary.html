@@ -11,43 +11,20 @@
     }
   </div>
 
-  <div class="stage-row">
-    @for (stage of analysis.stages; track stage.stageName) {
-      <div class="stage-chip" [class]="stageClass(stage.status)">
-        <strong>{{ stage.stageName }}</strong>
-        <span>{{ stageLabel(stage.status) }}</span>
-      </div>
-    }
-  </div>
-
-  @if (analysis.rootCause) {
-    <div class="root-cause-box">
-      <div class="rc-title">{{ analysis.rootCause.equipment }}</div>
-      <p>{{ analysis.rootCause.faultSource }}</p>
-      <p class="rc-detail">{{ analysis.rootCause.detectionDetail }}</p>
-      <div class="impact-row">
-        <span>Üretim: %{{ analysis.rootCause.productionImpactPct }}</span>
-        <span>Lojistik: %{{ analysis.rootCause.logisticImpactPct }}</span>
-        <span>Güven: %{{ analysis.rootCause.confidenceRate }}</span>
-      </div>
-    </div>
-  }
-
-  @if (analysis.evidenceIndicators?.length) {
-    <ul class="evidence-list">
-      @for (item of analysis.evidenceIndicators; track item) {
-        <li>{{ item }}</li>
+  @if (analysis.stages.length) {
+    <div class="stage-row">
+      @for (stage of analysis.stages; track stage.stageName) {
+        <div class="stage-chip" [class]="stageClass(stage.status)">
+          <strong>{{ stage.stageName }}</strong>
+          <span>{{ stageLabel(stage.status) }}</span>
+        </div>
       }
-    </ul>
-  }
-
-  @if (analysis.rootCause?.recommendedAction) {
-    <div class="action-box">{{ analysis.rootCause.recommendedAction }}</div>
+    </div>
   }
 
   @if (analysis.classificationType) {
     <div class="classification-tag" [class.production]="analysis.classificationType === 'PRODUCTION'">
-      Sınıflandırma: {{ analysis.classificationType === 'PRODUCTION' ? 'Üretim Kaynaklı' : 'Lojistik / Dış Etken' }}
+      {{ analysis.classificationType === 'PRODUCTION' ? 'Üretim Kaynaklı' : 'Lojistik / Dış Etken' }}
     </div>
   }
 </div>

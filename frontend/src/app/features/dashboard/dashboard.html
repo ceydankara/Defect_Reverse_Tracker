@@ -84,13 +84,9 @@
     </section>
 
     <section class="quick-links">
-      <a routerLink="/hasar-talep" class="quick-card">
-        <strong>Hasar Talebi Oluştur</strong>
-        <span>Yeni bobin bildirimi aç</span>
-      </a>
       @if (auth.canGradeQuality()) {
         <a routerLink="/kalite-siniflandirma" [queryParams]="{ status: 'pending' }" class="quick-card accent">
-          <strong>Kalite Kuyruğu</strong>
+          <strong>Fabrika Kalite Kuyruğu</strong>
           <span>{{ stats.pendingQualityCount }} bobin bekliyor</span>
         </a>
       }
@@ -106,55 +102,60 @@
           <span>{{ stats.decidedQualityCount }} bobin arşivi</span>
         </a>
       }
+      @if (auth.canManageFieldCases()) {
+        <a routerLink="/saha-hasar-dosyalari" class="quick-card">
+          <strong>Müşteri Şikâyet Dosyaları</strong>
+          <span>Saha bildirimleri ve telafi</span>
+        </a>
+      }
     </section>
 
-    <section class="charts-grid">
-      <article class="panel panel-highlight">
-        <div class="panel-head">
+    <section class="charts-grid charts-grid-top">
+      <article class="panel panel-compact panel-highlight">
+        <div class="panel-head panel-head-tight">
           <div>
             <div class="panel-tag">PROSES</div>
             <h2>Aşama Anomalileri</h2>
           </div>
           <span class="panel-stat">{{ stats.productionAnomalyCount }}</span>
         </div>
-        <div class="chart-wrap">
-          <canvas #stageChart></canvas>
-        </div>
         @if (stats.anomaliesByStage.length === 0) {
-          <p class="empty">Henüz aşama anomalisi kaydı yok.</p>
+          <p class="empty empty-inline">Henüz aşama anomalisi kaydı yok.</p>
         } @else {
-          <ul class="rank-list">
-            @for (item of stats.anomaliesByStage; track item.label; let i = $index) {
-              <li>
-                <span class="rank-no">{{ i + 1 }}</span>
-                <span class="rank-label">{{ item.label }}</span>
-                <strong>{{ item.count }}</strong>
-              </li>
-            }
-          </ul>
+          <div class="chart-wrap chart-compact-h">
+            <canvas #stageChart></canvas>
+          </div>
         }
       </article>
 
-      <article class="panel">
-        <div class="panel-head">
+      <article class="panel panel-compact">
+        <div class="panel-head panel-head-tight">
           <div>
             <div class="panel-tag">KAYNAK</div>
             <h2>Üretim vs Lojistik</h2>
           </div>
         </div>
-        <div class="chart-wrap doughnut-wrap">
-          <canvas #sourceChart></canvas>
-        </div>
-        <div class="source-legend">
-          <div class="legend-item">
-            <span class="dot prod"></span>
-            <span>Üretim Anomalisi</span>
-            <strong>{{ stats.productionAnomalyCount }}</strong>
+        <div class="source-split">
+          <div class="chart-wrap chart-donut-sm">
+            <canvas #sourceChart></canvas>
           </div>
-          <div class="legend-item">
-            <span class="dot log"></span>
-            <span>Lojistik Vakası</span>
-            <strong>{{ stats.logisticsCaseCount }}</strong>
+          <div class="source-legend source-legend-inline">
+            <div class="legend-item">
+              <span class="dot prod"></span>
+              <div class="legend-text">
+                <span>Üretim Anomalisi</span>
+                <div class="legend-bar"><div class="legend-fill prod" [style.width.%]="sourcePercent(stats.productionAnomalyCount)"></div></div>
+              </div>
+              <strong>{{ stats.productionAnomalyCount }}</strong>
+            </div>
+            <div class="legend-item">
+              <span class="dot log"></span>
+              <div class="legend-text">
+                <span>Lojistik Vakası</span>
+                <div class="legend-bar"><div class="legend-fill log" [style.width.%]="sourcePercent(stats.logisticsCaseCount)"></div></div>
+              </div>
+              <strong>{{ stats.logisticsCaseCount }}</strong>
+            </div>
           </div>
         </div>
       </article>

@@ -1,3 +1,55 @@
+:root {
+  /* Arka plan & yüzey */
+  --bg-app: #edf0f5;
+  --bg-sidebar: #f8f9fc;
+  --surface: #ffffff;
+  --surface-muted: #f3f5f9;
+  --surface-hover: #eef2f7;
+  --border: #d5dce8;
+  --border-subtle: #e4e9f2;
+
+  /* Metin */
+  --text-heading: #152033;
+  --text: #3a4a5e;
+  --text-secondary: #566578;
+  --text-muted: #728095;
+  --text-subtle: #94a3b8;
+
+  /* Marka / aksiyon */
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-soft: #e8efff;
+  --accent-border: #c7d7fe;
+  --accent-text: #1d4ed8;
+
+  --teal: #0f766e;
+  --teal-soft: #e0f2f1;
+  --teal-border: #99f6e4;
+  --teal-text: #0f766e;
+
+  /* Durum */
+  --success-soft: #ecfdf5;
+  --success-border: #a7f3d0;
+  --success-text: #047857;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #dc2626;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #b45309;
+  --info-soft: #eff6ff;
+  --info-border: #bfdbfe;
+  --info-text: #1d4ed8;
+
+  /* Gölge & radius */
+  --shadow-sm: 0 1px 2px rgba(21, 32, 51, 0.05), 0 1px 3px rgba(21, 32, 51, 0.04);
+  --shadow-md: 0 4px 18px rgba(21, 32, 51, 0.08);
+  --shadow-card: 0 1px 3px rgba(21, 32, 51, 0.06), 0 6px 16px rgba(21, 32, 51, 0.04);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -6,8 +58,8 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: #070b12;
-  color: #c8d3e0;
+  background: var(--bg-app);
+  color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -18,4 +70,116 @@ a {
 
 button, input, select, textarea {
   font: inherit;
+}
+
+/* ── Ortak kart & form ── */
+.panel-box,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.dark-input,
+.dark-textarea,
+.dark-input select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-heading);
+  border-radius: var(--radius-sm);
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--text-subtle);
+  }
+}
+
+.cta-btn {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(29, 78, 216, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(29, 78, 216, 0.32);
+  }
+}
+
+/* ── Filtre sekmeleri ── */
+.filter-tabs button {
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-subtle);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+}
+
+/* ── Banner & badge (light uyumlu) ── */
+.error-banner,
+.error {
+  background: var(--danger-soft) !important;
+  border: 1px solid var(--danger-border) !important;
+  color: var(--danger-text) !important;
+}
+
+.success-banner {
+  background: var(--success-soft) !important;
+  border: 1px solid var(--success-border) !important;
+  color: var(--success-text) !important;
+}
+
+.access-denied-banner {
+  background: var(--warning-soft) !important;
+  border: 1px solid var(--warning-border) !important;
+  color: var(--warning-text) !important;
+}
+
+.status-badge {
+  &.badge-open {
+    background: var(--danger-soft);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+  }
+  &.badge-review {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+  }
+  &.badge-resolved {
+    background: var(--success-soft);
+    color: var(--success-text);
+    border: 1px solid var(--success-border);
+  }
+}
+
+.live-pill {
+  background: var(--success-soft);
+  border: 1px solid var(--success-border);
+  color: var(--success-text);
+}
+
+.live-dot {
+  background: #10b981;
+  box-shadow: none;
 }

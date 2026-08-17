@@ -3,8 +3,11 @@ package com.example.defecttracker.controller;
 import com.example.defecttracker.dto.ConfirmGradeRequestDto;
 import com.example.defecttracker.dto.ConfirmGradeResponseDto;
 import com.example.defecttracker.dto.QualityGradingDto;
+import com.example.defecttracker.entity.User;
 import com.example.defecttracker.service.AnalysisService;
 import com.example.defecttracker.service.QualityGradingService;
+import com.example.defecttracker.util.UserDisplayNames;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +31,13 @@ public class QualityController {
     }
 
     @PostMapping("/decisions")
-    public ResponseEntity<ConfirmGradeResponseDto> confirmGrade(@RequestBody ConfirmGradeRequestDto request) {
+    public ResponseEntity<ConfirmGradeResponseDto> confirmGrade(
+            @RequestBody ConfirmGradeRequestDto request,
+            HttpServletRequest httpRequest) {
+        User user = (User) httpRequest.getAttribute("currentUser");
+        if (request.getInspectorName() == null || request.getInspectorName().isBlank()) {
+            request.setInspectorName(UserDisplayNames.formatInspector(user));
+        }
         return ResponseEntity.ok(qualityGradingService.confirmDecision(request));
     }
 }

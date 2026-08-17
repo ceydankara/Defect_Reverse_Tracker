@@ -2,6 +2,7 @@ export const ROLES = {
   ADMIN: 'ADMIN',
   QUALITY: 'QUALITY',
   MAINTENANCE: 'MAINTENANCE',
+  SALES: 'SALES',
 } as const;
 
 export type AppRole = (typeof ROLES)[keyof typeof ROLES];
@@ -10,9 +11,19 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   [ROLES.ADMIN]: 'Yönetici',
   [ROLES.QUALITY]: 'Kalite Kontrol',
   [ROLES.MAINTENANCE]: 'Bakım / Üretim',
+  [ROLES.SALES]: 'Satış / Müşteri İlişkileri',
 };
 
 /** Hasar analizi ekranı */
 export const ANALYSIS_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY, ROLES.MAINTENANCE];
-/** Kalite sınıflandırma ve karar verme */
+/** Fabrika kalite kuyruğu ve karar verme */
 export const QUALITY_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY];
+/** Müşteri şikâyet dosyaları */
+export const FIELD_CASE_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY, ROLES.SALES];
+
+export function formatInspectorName(jobTitle?: string | null, fullName?: string | null): string {
+  const title = jobTitle?.trim() ?? '';
+  const name = fullName?.trim() ?? '';
+  if (title && name) return `${title} ${name}`;
+  return name || title || 'Kalite Kontrol';
+}

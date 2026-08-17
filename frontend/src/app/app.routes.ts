@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard, roleGuard } from './core/guards/auth.guard';
-import { ANALYSIS_ROLES, QUALITY_ROLES } from './core/auth/roles';
+import { ANALYSIS_ROLES, FIELD_CASE_ROLES, QUALITY_ROLES } from './core/auth/roles';
 import { MainLayoutComponent } from './layout/main-layout/main-layout';
 import { LoginComponent } from './features/login/login';
 import { DashboardComponent } from './features/dashboard/dashboard';
@@ -32,7 +32,7 @@ export const routes: Routes = [
       {
         path: 'saha-hasar-dosyalari',
         component: FieldCasesComponent,
-        canActivate: [roleGuard(QUALITY_ROLES)],
+        canActivate: [roleGuard(FIELD_CASE_ROLES)],
       },
     ],
   },
