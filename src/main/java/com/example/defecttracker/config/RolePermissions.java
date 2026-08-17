@@ -25,6 +25,10 @@ public final class RolePermissions {
                 && Set.of("ADMIN", "QUALITY", "SALES").contains(user.getRole());
     }
 
+    public static boolean canViewRecentTickets(User user) {
+        return user != null && user.getRole() != null && ANALYSIS_ROLES.contains(user.getRole());
+    }
+
     public static boolean canCreateDamageTicket(User user) {
         return user != null && user.getRole() != null;
     }

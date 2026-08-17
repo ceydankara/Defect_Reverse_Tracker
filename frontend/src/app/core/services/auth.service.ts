@@ -49,6 +49,10 @@ export class AuthService {
     return this.hasAnyRole(ANALYSIS_ROLES);
   }
 
+  canViewRecentTickets(): boolean {
+    return this.canAnalyze();
+  }
+
   canGradeQuality(): boolean {
     return this.hasAnyRole(QUALITY_ROLES);
   }

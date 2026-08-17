@@ -14,7 +14,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   [ROLES.SALES]: 'Satış / Müşteri İlişkileri',
 };
 
-/** Hasar analizi ekranı */
+/** Hasar analizi ekranı ve ana panelde son talepler */
 export const ANALYSIS_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY, ROLES.MAINTENANCE];
 /** Fabrika kalite kuyruğu ve karar verme */
 export const QUALITY_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY];

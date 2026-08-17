@@ -62,9 +62,13 @@ public class DashboardService {
         long coilsWithAnomaly = processStageRepository.findDistinctCoilIdsWithAnomaly().size();
         stats.setLogisticsCaseCount(Math.max(0, coilRepository.count() - coilsWithAnomaly));
 
-        stats.setRecentTickets(damageTicketRepository.findTop5ByOrderByCreatedAtDesc().stream()
-                .map(this::toRecentTicket)
-                .collect(Collectors.toList()));
+        if (RolePermissions.canViewRecentTickets(user)) {
+            stats.setRecentTickets(damageTicketRepository.findTop5ByOrderByCreatedAtDesc().stream()
+                    .map(this::toRecentTicket)
+                    .collect(Collectors.toList()));
+        } else {
+            stats.setRecentTickets(List.of());
+        }
 
         if (RolePermissions.canGradeQuality(user)) {
             Set<String> coilsWithTickets = damageTicketRepository.findAllByOrderByCreatedAtDesc().stream()

@@ -159,95 +159,116 @@
           </div>
         </div>
       </article>
+    </section>
 
-      <article class="panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-tag">KUSUR</div>
-            <h2>Kusur Kodları</h2>
-          </div>
-        </div>
-        <div class="chart-wrap">
-          <canvas #defectChart></canvas>
-        </div>
-        @if (stats.defectsByCode.length === 0) {
-          <p class="empty">Kusur kodu verisi yok.</p>
-        } @else {
-          <ul class="rank-list compact">
-            @for (item of stats.defectsByCode; track item.label) {
-              <li>
-                <span class="rank-label mono">{{ formatDefectCode(item.label) }}</span>
-                <strong>{{ item.count }}</strong>
-              </li>
-            }
-          </ul>
-        }
-      </article>
-
-      @if (auth.canGradeQuality() && stats.qualityByGrade.length > 0) {
-        <article class="panel">
-          <div class="panel-head">
+    <section
+      class="details-layout"
+      [class.details-layout-single]="!( (auth.canGradeQuality() && stats.qualityByGrade.length > 0) || auth.canViewRecentTickets() )"
+    >
+      <div class="details-stack">
+        <article class="panel panel-compact">
+          <div class="panel-head panel-head-tight">
             <div>
-              <div class="panel-tag">KALİTE</div>
-              <h2>Karar Dağılımı</h2>
+              <div class="panel-tag">KUSUR</div>
+              <h2>Kusur Kodları</h2>
             </div>
           </div>
-          <div class="chart-wrap doughnut-wrap">
-            <canvas #gradeChart></canvas>
-          </div>
-          <ul class="grade-chips">
-            @for (item of stats.qualityByGrade; track item.label) {
-              <li [class]="gradeChipClass(item.label)">
-                {{ item.label }} <strong>{{ item.count }}</strong>
-              </li>
-            }
-          </ul>
+          @if (stats.defectsByCode.length === 0) {
+            <p class="empty empty-inline">Kusur kodu verisi yok.</p>
+          } @else {
+            <ul class="defect-code-list">
+              @for (item of stats.defectsByCode; track item.label) {
+                <li>
+                  <div class="defect-code-top">
+                    <span class="mono">{{ formatDefectCode(item.label) }}</span>
+                    <strong>{{ item.count }}</strong>
+                  </div>
+                  <div class="bar-track">
+                    <div class="bar-fill" [style.width.%]="barPercent(item.count, defectMaxCount())"></div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
         </article>
+
+        <article class="panel panel-compact">
+          <div class="panel-head panel-head-tight">
+            <div>
+              <div class="panel-tag">ÇELİK GRADE</div>
+              <h2>Kusurlu Ürünler (Grade)</h2>
+            </div>
+          </div>
+          @if (stats.defectsBySteelGrade.length === 0) {
+            <p class="empty empty-inline">Çelik grade verisi yok.</p>
+          } @else {
+            <ul class="defect-code-list">
+              @for (item of stats.defectsBySteelGrade; track item.label) {
+                <li>
+                  <div class="defect-code-top">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count }}</strong>
+                  </div>
+                  <div class="bar-track bar-track-sm">
+                    <div class="bar-fill" [style.width.%]="barPercent(item.count, stats.totalDefects)"></div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+      </div>
+
+      @if ((auth.canGradeQuality() && stats.qualityByGrade.length > 0) || auth.canViewRecentTickets()) {
+        <div class="details-side">
+          @if (auth.canGradeQuality() && stats.qualityByGrade.length > 0) {
+            <article class="panel panel-compact">
+              <div class="panel-head panel-head-tight">
+                <div>
+                  <div class="panel-tag">KALİTE</div>
+                  <h2>Karar Dağılımı</h2>
+                </div>
+              </div>
+              <div class="source-split quality-split">
+                <div class="chart-wrap chart-donut-sm">
+                  <canvas #gradeChart></canvas>
+                </div>
+                <ul class="grade-chips grade-chips-inline">
+                  @for (item of stats.qualityByGrade; track item.label) {
+                    <li [class]="gradeChipClass(item.label)">
+                      {{ item.label }} <strong>{{ item.count }}</strong>
+                    </li>
+                  }
+                </ul>
+              </div>
+            </article>
+          }
+
+          @if (auth.canViewRecentTickets()) {
+            <ng-container
+              *ngTemplateOutlet="recentTicketsPanel; context: { showQueueLink: auth.canGradeQuality() && stats.qualityByGrade.length > 0 }"
+            />
+          }
+        </div>
       }
     </section>
 
-    <section class="bottom-grid">
-      <article class="panel">
-        <div class="panel-head">
-          <div>
-            <div class="panel-tag">ÇELİK GRADE</div>
-            <h2>Kaliteye Göre Kusurlu Ürünler</h2>
-          </div>
-        </div>
-        @if (stats.defectsBySteelGrade.length === 0) {
-          <p class="empty">Çelik grade verisi yok.</p>
-        } @else {
-          <ul class="steel-list">
-            @for (item of stats.defectsBySteelGrade; track item.label) {
-              <li>
-                <div class="steel-top">
-                  <span>{{ item.label }}</span>
-                  <strong>{{ item.count }}</strong>
-                </div>
-                <div class="bar-track">
-                  <div class="bar-fill" [style.width.%]="barPercent(item.count, stats.totalDefects)"></div>
-                </div>
-              </li>
-            }
-          </ul>
-        }
-      </article>
-
-      <article class="panel">
-        <div class="panel-head">
+    <ng-template #recentTicketsPanel let-showQueueLink="showQueueLink">
+      <article class="panel panel-compact">
+        <div class="panel-head panel-head-tight">
           <div>
             <div class="panel-tag">AKIŞ</div>
             <h2>Son Hasar Talepleri</h2>
           </div>
-          @if (auth.canGradeQuality()) {
+          @if (showQueueLink) {
             <a routerLink="/kalite-siniflandirma" class="panel-link">Tümünü gör →</a>
           }
         </div>
-        @if (stats.recentTickets.length === 0) {
-          <p class="empty">Henüz talep oluşturulmamış.</p>
+        @if (stats!.recentTickets.length === 0) {
+          <p class="empty empty-inline">Henüz talep oluşturulmamış.</p>
         } @else {
           <div class="ticket-list">
-            @for (ticket of stats.recentTickets; track ticket.ticketNumber) {
+            @for (ticket of stats!.recentTickets; track ticket.ticketNumber) {
               <div class="ticket-item">
                 <div class="ticket-icon">📄</div>
                 <div class="ticket-body">
@@ -270,6 +291,6 @@
           </div>
         }
       </article>
-    </section>
+    </ng-template>
   }
 </div>

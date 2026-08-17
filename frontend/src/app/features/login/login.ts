@@ -19,14 +19,6 @@ export class LoginComponent implements OnInit {
   errorMessage = '';
   backendOnline = false;
 
-  readonly demoAccounts = [
-    { user: 'admin', pass: 'admin123', role: 'Mehmet Y. — Kalite Müdürü (tüm paneller)' },
-    { user: 'ceyda', pass: 'ceyda123', role: 'Ceyda Ankara — Kalite Uzmanı' },
-    { user: 'kalite', pass: 'kalite123', role: 'Ayşe Korkmaz — Kalite Uzmanı' },
-    { user: 'bakim', pass: 'bakim123', role: 'Ali Demir — Bakım (talep + analiz)' },
-    { user: 'satis', pass: 'satis123', role: 'Deniz Arslan — Satış (şikâyet dosyaları)' },
-  ];
-
   constructor(
     private auth: AuthService,
     private router: Router,
@@ -38,11 +30,6 @@ export class LoginComponent implements OnInit {
       next: () => (this.backendOnline = true),
       error: () => (this.backendOnline = false),
     });
-  }
-
-  fillDemo(account: { user: string; pass: string }): void {
-    this.username = account.user;
-    this.password = account.pass;
   }
 
   onSubmit(): void {
