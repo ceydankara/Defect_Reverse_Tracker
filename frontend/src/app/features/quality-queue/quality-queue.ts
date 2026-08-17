@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DefectService } from '../../core/services/defect';
 import { AuthService } from '../../core/services/auth.service';
@@ -35,7 +35,6 @@ export class QualityQueueComponent implements OnInit {
     private defectService: DefectService,
     private auth: AuthService,
     private route: ActivatedRoute,
-    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -240,22 +239,11 @@ export class QualityQueueComponent implements OnInit {
     }
   }
 
-  openFullAnalysis(): void {
-    if (!this.selectedTicket?.batchId) return;
-
-    const navigate = () => {
-      this.router.navigate(['/hasar-analiz'], {
-        queryParams: {
-          coil: this.selectedTicket!.batchId,
-          auto: '1',
-          from: 'kalite',
-        },
-      });
+  analysisLinkParams(): Record<string, string> {
+    return {
+      coil: this.selectedTicket?.batchId ?? '',
+      auto: '1',
+      from: 'kalite',
     };
-
-    this.defectService.getTicketQueueDetail(this.selectedTicket.ticketNumber).subscribe({
-      next: () => navigate(),
-      error: () => navigate(),
-    });
   }
 }
