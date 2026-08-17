@@ -22,10 +22,12 @@
       }
       @if (auth.canGradeQuality()) {
         <a routerLink="/kalite-siniflandirma" routerLinkActive="active">
-          <span class="icon">🏷</span> Kalite Sınıflandırma
+          <span class="icon">🏷</span> Fabrika Kalite Kuyruğu
         </a>
+      }
+      @if (auth.canManageFieldCases()) {
         <a routerLink="/saha-hasar-dosyalari" routerLinkActive="active">
-          <span class="icon">📍</span> Saha Hasar Dosyaları
+          <span class="icon">📍</span> Müşteri Şikâyet Dosyaları
         </a>
       }
     </nav>

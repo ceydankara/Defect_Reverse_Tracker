@@ -1,45 +1,72 @@
 <div class="login-page">
-  <div class="login-panel">
-    <div class="brand">
-      <div class="logo"></div>
-      <div>
+  <div class="login-bg-shape login-bg-shape-a" aria-hidden="true"></div>
+  <div class="login-bg-shape login-bg-shape-b" aria-hidden="true"></div>
+
+  <div class="login-shell">
+    <section class="login-hero">
+      <div class="hero-inner">
+        <div class="hero-badge">Steel Quality Platform</div>
         <h1>Defect Reverse-Tracker</h1>
-        <p>Üretim Hasar & Kök Neden Analiz Sistemi</p>
       </div>
-    </div>
+      <div class="hero-glow" aria-hidden="true"></div>
+    </section>
 
-    <form (ngSubmit)="onSubmit()" class="login-form">
-      <h2>Yetkili Giriş</h2>
-
-      @if (!backendOnline) {
-        <div class="backend-warn">
-          Backend servisi kapalı görünüyor. Önce Spring Boot'u başlatın:
-          <code>.\mvnw.cmd spring-boot:run</code>
+    <section class="login-card">
+      <div class="card-head">
+        <div class="logo-mark" aria-hidden="true">
+          <span></span>
         </div>
-      }
+        <div>
+          <h2>Giriş Yap</h2>
+        </div>
+      </div>
 
-      <label>Kullanıcı Adı</label>
-      <input type="text" [(ngModel)]="username" name="username" placeholder="admin" autocomplete="username" />
+      <form (ngSubmit)="onSubmit()" class="login-form">
+        @if (!backendOnline) {
+          <div class="backend-warn">
+            Sunucuya bağlanılamıyor. Backend servisinin çalıştığından emin olun.
+          </div>
+        }
 
-      <label>Şifre</label>
-      <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" autocomplete="current-password" />
+        <div class="field">
+          <label for="username">Kullanıcı Adı</label>
+          <input
+            id="username"
+            type="text"
+            [(ngModel)]="username"
+            name="username"
+            placeholder="Kullanıcı adınız"
+            autocomplete="username"
+            [disabled]="loading"
+          />
+        </div>
 
-      @if (errorMessage) {
-        <div class="error">{{ errorMessage }}</div>
-      }
+        <div class="field">
+          <label for="password">Şifre</label>
+          <input
+            id="password"
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            [disabled]="loading"
+          />
+        </div>
 
-      <button type="submit" [disabled]="loading">
-        {{ loading ? 'Giriş yapılıyor...' : 'Sisteme Giriş Yap' }}
-      </button>
-    </form>
+        @if (errorMessage) {
+          <div class="error">{{ errorMessage }}</div>
+        }
 
-    <div class="demo-box">
-      <span>Demo hesaplar:</span>
-      @for (acc of demoAccounts; track acc.user) {
-        <button type="button" class="demo-btn" (click)="fillDemo(acc)">
-          {{ acc.user }} / {{ acc.role }}
+        <button type="submit" class="submit-btn" [disabled]="loading">
+          @if (loading) {
+            <span class="spinner" aria-hidden="true"></span>
+            Giriş yapılıyor...
+          } @else {
+            Giriş Yap
+          }
         </button>
-      }
-    </div>
+      </form>
+    </section>
   </div>
 </div>

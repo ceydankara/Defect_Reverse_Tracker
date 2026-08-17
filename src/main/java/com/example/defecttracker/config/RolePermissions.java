@@ -21,6 +21,15 @@ public final class RolePermissions {
     }
 
     public static boolean canManageFieldCases(User user) {
-        return canGradeQuality(user);
+        return user != null && user.getRole() != null
+                && Set.of("ADMIN", "QUALITY", "SALES").contains(user.getRole());
+    }
+
+    public static boolean canViewRecentTickets(User user) {
+        return user != null && user.getRole() != null && ANALYSIS_ROLES.contains(user.getRole());
+    }
+
+    public static boolean canCreateDamageTicket(User user) {
+        return user != null && user.getRole() != null;
     }
 }

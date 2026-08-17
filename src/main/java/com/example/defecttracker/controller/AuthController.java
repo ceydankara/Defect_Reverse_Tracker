@@ -39,7 +39,12 @@ public class AuthController {
     @GetMapping("/me")
     public LoginResponseDto me(@RequestHeader("Authorization") String authorization) {
         return authService.validateToken(extractToken(authorization))
-                .map(user -> new LoginResponseDto(extractToken(authorization), user.getUsername(), user.getFullName(), user.getRole()))
+                .map(user -> new LoginResponseDto(
+                        extractToken(authorization),
+                        user.getUsername(),
+                        user.getFullName(),
+                        user.getJobTitle(),
+                        user.getRole()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Oturum geçersiz"));
     }
 

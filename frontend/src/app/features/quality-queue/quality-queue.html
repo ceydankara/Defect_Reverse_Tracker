@@ -1,8 +1,8 @@
 <div class="quality-page">
   <header class="page-header">
     <div>
-      <h1>Hasar Talebi Gelen Bobinler</h1>
-      <p>Kalite kontrol ekibi burada bobinleri sınıflandırır — müşteri sevkiyatı, ikinci kalite veya hurda</p>
+      <h1>Fabrika Kalite Kuyruğu</h1>
+      <p>Fabrikada tespit edilen bobinler — sevkiyat öncesi birincil kalite, ikinci kalite veya hurda kararı</p>
     </div>
     <a routerLink="/hasar-talep" class="cta-btn">+ Yeni Hasar Talebi</a>
   </header>
@@ -155,9 +155,6 @@
             <div><span>Son Bildiren</span><strong>{{ selectedTicket.reporterName }}</strong></div>
             <div><span>Tespit Yeri</span><strong>{{ selectedTicket.detectedLocation }}</strong></div>
           </div>
-          @if (analysisHeadline) {
-            <div class="analysis-headline">{{ analysisHeadline }}</div>
-          }
           @if (selectedTicket.extraNotes) {
             <div class="extra-notes">Not: {{ selectedTicket.extraNotes }}</div>
           }

@@ -29,7 +29,12 @@ public class AuthService {
                 .map(user -> {
                     String token = UUID.randomUUID().toString();
                     sessions.put(token, new SessionEntry(user.getUsername(), Instant.now().plusSeconds(TOKEN_TTL_SECONDS)));
-                    return new LoginResponseDto(token, user.getUsername(), user.getFullName(), user.getRole());
+                    return new LoginResponseDto(
+                            token,
+                            user.getUsername(),
+                            user.getFullName(),
+                            user.getJobTitle(),
+                            user.getRole());
                 });
     }
 

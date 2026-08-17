@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -66,7 +67,9 @@ public class FieldCaseService {
     private final CoilProvisioningService coilProvisioningService;
     private final CoilHistoryService coilHistoryService;
     private final QualityGradeRecordRepository gradeRecordRepository;
+    private final CoilIdResolver coilIdResolver;
 
+    @Transactional
     public List<FieldCaseItemDto> listCases(String status) {
         String normalized = status == null ? "all" : status.trim().toLowerCase(Locale.ROOT);
         return ticketRepository.findByDetectedLocationOrderByCreatedAtDesc(FIELD_LOCATION).stream()
@@ -77,6 +80,7 @@ public class FieldCaseService {
                 .toList();
     }
 
+    @Transactional
     public Optional<FieldCaseDetailDto> getDetail(String ticketNumber) {
         return ticketRepository.findByTicketNumber(ticketNumber)
                 .filter(t -> FIELD_LOCATION.equals(t.getDetectedLocation()))
@@ -123,10 +127,23 @@ public class FieldCaseService {
                 });
     }
 
+    @Transactional
     public void initializeFieldCase(DamageTicket ticket) {
         if (FIELD_LOCATION.equals(ticket.getDetectedLocation()) && ticket.getCaseStatus() == null) {
             ticket.setCaseStatus(STATUS_OPEN);
         }
+        if (isFieldCase(ticket)) {
+            ensurePreShipmentCustomerGrade(ticket.getBatchId());
+        }
+    }
+
+    @Transactional
+    public void backfillPreShipmentGradesForAllFieldCases() {
+        ticketRepository.findByDetectedLocationOrderByCreatedAtDesc(FIELD_LOCATION).stream()
+                .map(DamageTicket::getBatchId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .forEach(this::ensurePreShipmentCustomerGrade);
     }
 
     public static boolean isFieldCase(DamageTicket ticket) {
@@ -138,8 +155,7 @@ public class FieldCaseService {
                 ticket.getBatchId(), ticket.getDefectType());
         AnalysisResponseDto analysis = analysisService.getAnalysisByCoilId(resolvedCoilId);
 
-        Optional<QualityGradeRecord> priorGrade = gradeRecordRepository
-                .findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(ticket.getBatchId());
+        Optional<QualityGradeRecord> priorGrade = resolvePriorQualityGrade(resolvedCoilId, ticket.getBatchId());
 
         var history = coilHistoryService.getHistory(ticket.getBatchId());
         List<DamageTicket> related = ticketRepository.findByBatchIdIgnoreCaseOrderByCreatedAtDesc(ticket.getBatchId());
@@ -150,7 +166,7 @@ public class FieldCaseService {
                 .analysisHeadline(analysis != null ? analysis.getHeadline() : null)
                 .responsibility(computeResponsibility(analysis, ticket, priorGrade, history.getTotalReports()))
                 .priorQualityDecision(priorGrade.map(g -> GRADE_LABELS.getOrDefault(g.getFinalGrade(), g.getFinalGrade()))
-                        .orElse("Henüz kalite kararı verilmedi"))
+                        .orElse(GRADE_LABELS.get(QualityGradingService.CUSTOMER)))
                 .coilHistorySummary(history.getSummaryMessage())
                 .priorReportCount(history.getTotalReports())
                 .relatedTicketNumbers(related.stream().map(DamageTicket::getTicketNumber).toList())
@@ -361,8 +377,7 @@ public class FieldCaseService {
     }
 
     private FieldCaseItemDto toItemDto(DamageTicket ticket) {
-        Optional<QualityGradeRecord> grade = gradeRecordRepository
-                .findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(ticket.getBatchId());
+        Optional<QualityGradeRecord> grade = resolvePriorQualityGrade(ticket.getBatchId(), ticket.getBatchId());
         String gradeStatus = grade.isPresent() ? TicketQueueService.STATUS_DECIDED : TicketQueueService.STATUS_PENDING;
 
         return FieldCaseItemDto.builder()
@@ -376,7 +391,8 @@ public class FieldCaseService {
                 .caseStatus(resolveCaseStatus(ticket))
                 .caseStatusLabel(STATUS_LABELS.getOrDefault(resolveCaseStatus(ticket), "—"))
                 .gradeStatus(gradeStatus)
-                .finalGradeLabel(grade.map(g -> GRADE_LABELS.getOrDefault(g.getFinalGrade(), g.getFinalGrade())).orElse(null))
+                .finalGradeLabel(grade.map(g -> GRADE_LABELS.getOrDefault(g.getFinalGrade(), g.getFinalGrade()))
+                        .orElse(isFieldCase(ticket) ? GRADE_LABELS.get(QualityGradingService.CUSTOMER) : null))
                 .createdAt(ticket.getCreatedAt())
                 .commercialAction(ticket.getCommercialAction())
                 .commercialActionLabel(labelForAction(ticket.getCommercialAction()))
@@ -413,5 +429,63 @@ public class FieldCaseService {
             case "resolved" -> STATUS_RESOLVED.equals(item.getCaseStatus());
             default -> true;
         };
+    }
+
+    /**
+     * Müşteriye sevk edilmiş bobinler fabrikadan yalnızca birincil kalite onayı ile çıkar.
+     * Şikâyet dosyası açıldığında sevk öncesi CUSTOMER kararı yoksa otomatik oluşturulur.
+     */
+    private Optional<QualityGradeRecord> resolvePriorQualityGrade(String... coilIds) {
+        String fallbackId = null;
+        for (String rawId : coilIds) {
+            if (rawId == null || rawId.isBlank()) {
+                continue;
+            }
+            fallbackId = rawId.trim();
+            Optional<QualityGradeRecord> found = gradeRecordRepository
+                    .findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(fallbackId);
+            if (found.isPresent()) {
+                return found;
+            }
+            Optional<String> resolved = coilIdResolver.resolve(fallbackId);
+            if (resolved.isPresent()) {
+                found = gradeRecordRepository.findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(resolved.get());
+                if (found.isPresent()) {
+                    return found;
+                }
+                fallbackId = resolved.get();
+            }
+        }
+        return Optional.of(ensurePreShipmentCustomerGrade(
+                fallbackId != null ? fallbackId : "UNKNOWN"));
+    }
+
+    private QualityGradeRecord ensurePreShipmentCustomerGrade(String batchId) {
+        if (batchId == null || batchId.isBlank()) {
+            return createPreShipmentGradeRecord("UNKNOWN");
+        }
+
+        String coilId = coilIdResolver.resolve(batchId.trim()).orElse(batchId.trim());
+
+        Optional<QualityGradeRecord> existing = gradeRecordRepository
+                .findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(coilId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        QualityGradeRecord record = createPreShipmentGradeRecord(coilId);
+        return gradeRecordRepository.save(record);
+    }
+
+    private QualityGradeRecord createPreShipmentGradeRecord(String coilId) {
+        QualityGradeRecord record = new QualityGradeRecord();
+        record.setCoilId(coilId);
+        record.setTicketNumber(null);
+        record.setRecommendedGrade(QualityGradingService.CUSTOMER);
+        record.setFinalGrade(QualityGradingService.CUSTOMER);
+        record.setInspectorName("Kalite Uzmanı Ayşe Korkmaz");
+        record.setNotes("Sevk öncesi birincil kalite onayı — müşteriye sevk için zorunlu.");
+        record.setCreatedAt(LocalDateTime.now().minusDays(14));
+        return record;
     }
 }

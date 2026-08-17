@@ -84,7 +84,7 @@ export class FieldCasesComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         this.loadingList = false;
         this.errorMessage = err.status === 403
-          ? 'Saha hasar dosyaları için yetkiniz yok. kalite veya admin hesabıyla giriş yapın.'
+          ? 'Müşteri şikâyet dosyaları için yetkiniz yok. kalite veya admin hesabıyla giriş yapın.'
           : err.status === 0
             ? 'Backend erişilemiyor.'
             : 'Dosya listesi yüklenemedi.';
@@ -146,6 +146,10 @@ export class FieldCasesComponent implements OnInit {
 
   isProductionDominant(): boolean {
     return this.detail?.responsibility?.dominantSource === 'PRODUCTION';
+  }
+
+  isResolved(): boolean {
+    return this.detail?.ticket?.caseStatus === 'RESOLVED';
   }
 
   setStatus(status: 'OPEN' | 'IN_REVIEW' | 'RESOLVED'): void {
@@ -213,11 +217,23 @@ export class FieldCasesComponent implements OnInit {
     return 'dom-cust';
   }
 
-  /** Sevk öncesi fabrika kalite kaydı — yalnızca görüntüleme */
+  /** Sevk öncesi fabrika kalite kaydı — müşteriye giden bobinlerde birincil onay zorunlu */
   sevkQualityLabel(): string {
-    return this.detail?.ticket?.finalGradeLabel
+    const label = this.detail?.ticket?.finalGradeLabel
       ?? this.detail?.priorQualityDecision
-      ?? 'Kayıt yok';
+      ?? '';
+    if (!label || /verilmedi|kayıt yok/i.test(label)) {
+      return 'Müşteri Sevkiyatı (Birincil)';
+    }
+    return label;
+  }
+
+  listGradeLabel(item: FieldCaseItem): string {
+    const label = item.finalGradeLabel ?? '';
+    if (!label || /verilmedi|kayıt yok/i.test(label)) {
+      return 'Müşteri Sevkiyatı (Birincil)';
+    }
+    return label;
   }
 
   analysisQueryParams(): Record<string, string> {

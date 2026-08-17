@@ -2,6 +2,7 @@ export interface AuthUser {
   token: string;
   username: string;
   fullName: string;
+  jobTitle?: string;
   role: string;
 }
 

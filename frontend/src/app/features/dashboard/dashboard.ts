@@ -17,7 +17,6 @@ Chart.register(...registerables);
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('stageChart') stageChartRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('defectChart') defectChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('sourceChart') sourceChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('gradeChart') gradeChartRef!: ElementRef<HTMLCanvasElement>;
 
@@ -27,7 +26,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   accessDeniedMessage = '';
 
   private stageChart: Chart | null = null;
-  private defectChart: Chart | null = null;
   private sourceChart: Chart | null = null;
   private gradeChart: Chart | null = null;
   private chartsReady = false;
@@ -72,7 +70,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stageChart?.destroy();
-    this.defectChart?.destroy();
     this.sourceChart?.destroy();
     this.gradeChart?.destroy();
   }
@@ -82,8 +79,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(4, (value / total) * 100);
   }
 
+  sourcePercent(value: number): number {
+    if (!this.stats) return 0;
+    const total = this.stats.productionAnomalyCount + this.stats.logisticsCaseCount;
+    if (!total) return 0;
+    return Math.round((value / total) * 100);
+  }
+
   formatDefectCode(code: string): string {
     return code.replace(/^DEF_/, '').replace(/_/g, ' ');
+  }
+
+  defectMaxCount(): number {
+    if (!this.stats?.defectsByCode.length) return 1;
+    return Math.max(...this.stats.defectsByCode.map((d) => d.count));
   }
 
   formatDate(value: string): string {
@@ -105,7 +114,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.chartsReady || !this.stats) return;
 
     this.stageChart?.destroy();
-    this.defectChart?.destroy();
     this.sourceChart?.destroy();
     this.gradeChart?.destroy();
 
@@ -116,16 +124,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.stats.anomaliesByStage.map((x) => x.count),
         ['#ff4d6d', '#ff758f', '#ff8fa3', '#ffb3c1'],
         (chart) => (this.stageChart = chart),
-      );
-    }
-
-    if (this.stats.defectsByCode.length) {
-      this.renderBarChart(
-        this.defectChartRef,
-        this.stats.defectsByCode.map((x) => this.formatDefectCode(x.label)),
-        this.stats.defectsByCode.map((x) => x.count),
-        ['#1a6dff', '#3b82f6', '#60a5fa', '#93c5fd'],
-        (chart) => (this.defectChart = chart),
         true,
       );
     }
@@ -187,12 +185,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           plugins: { legend: { display: false } },
           scales: {
             x: {
-              ticks: { color: '#8a9bb5', font: { size: 11 } },
+              ticks: { color: '#64748b', font: { size: 11 } },
               grid: { display: false },
             },
             y: {
-              ticks: { color: '#8a9bb5', precision: 0, font: { size: 11 } },
-              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#64748b', precision: 0, font: { size: 11 } },
+              grid: { color: 'rgba(15, 23, 42, 0.08)' },
             },
           },
         },

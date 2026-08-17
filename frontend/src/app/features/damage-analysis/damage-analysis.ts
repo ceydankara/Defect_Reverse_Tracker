@@ -30,7 +30,7 @@ interface SensorCard {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './damage-analysis.html',
-  styleUrl: '../defect-tracker/defect-tracker.scss',
+  styleUrl: './damage-analysis.scss',
 })
 export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('sensorChartCanvas') sensorChartCanvas!: ElementRef<HTMLCanvasElement>;
@@ -236,7 +236,7 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
         labels: [],
         datasets: [
           { label: 'Gerçek', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2, tension: 0.35, fill: true, pointRadius: 0 },
-          { label: 'Hedef (normal)', data: [], borderColor: '#38bdf8', borderDash: [6, 4], borderWidth: 2, pointRadius: 0 },
+          { label: 'Hedef (normal)', data: [], borderColor: '#2563eb', borderDash: [6, 4], borderWidth: 2, pointRadius: 0 },
           { label: 'Kritik Alt', data: [], borderColor: '#dc2626', borderDash: [6, 4], borderWidth: 2, pointRadius: 0 },
           { label: 'Kritik Üst', data: [], borderColor: '#dc2626', borderDash: [6, 4], borderWidth: 2, pointRadius: 0 },
           { label: 'Uyarı Alt', data: [], borderColor: '#f59e0b', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0 },
@@ -247,8 +247,8 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+          x: { grid: { color: 'rgba(21,32,51,0.08)' }, ticks: { color: '#728095' } },
+          y: { grid: { color: 'rgba(21,32,51,0.08)' }, ticks: { color: '#728095' } },
         },
       },
     });
