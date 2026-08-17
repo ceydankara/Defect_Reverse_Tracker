@@ -14,13 +14,23 @@
         @else if (autoStarted && isAnalyzed) { tamamlandı. }
       </div>
     }
-    <div class="form-grid-2" [class.from-quality-form]="fromQuality">
+    @if (fromFieldCase && batchId) {
+      <div class="from-field-banner">
+        Müşteri şikâyet dosyasından yönlendirildiniz — <strong>{{ batchId }}</strong>
+        @if (autoStarted && isLoading) { · analiz başlatılıyor... }
+        @else if (autoStarted && isAnalyzed) { · analiz tamamlandı. }
+        <a [routerLink]="['/saha-hasar-dosyalari']" [queryParams]="fieldCaseReturnQueryParams()" class="banner-return-link">
+          Dosyaya dön →
+        </a>
+      </div>
+    }
+    <div class="form-grid-2" [class.from-quality-form]="fromQuality || fromFieldCase">
       <div class="input-group">
         <label>Bobin ID</label>
         <input type="text" [(ngModel)]="batchId" placeholder="Örn: BOBIN-2026-9041" class="dark-input"
-               [readonly]="fromQuality" (keyup.enter)="!fromQuality && onStartAnalysis()" />
+               [readonly]="fromQuality || fromFieldCase" (keyup.enter)="!fromQuality && !fromFieldCase && onStartAnalysis()" />
       </div>
-      @if (!fromQuality) {
+      @if (!fromQuality && !fromFieldCase) {
         <div class="input-group" style="align-self: end;">
           <button type="button" class="btn-submit-ticket" (click)="onStartAnalysis()" [disabled]="isLoading">
             {{ isLoading ? 'Analiz yükleniyor...' : 'Analizi Başlat' }}
@@ -44,7 +54,11 @@
         }
       </div>
       <div class="ticket-actions">
-        @if (auth.canGradeQuality()) {
+        @if (fromFieldCase) {
+          <a class="btn-field-return" [routerLink]="['/saha-hasar-dosyalari']" [queryParams]="fieldCaseReturnQueryParams()">
+            Müşteri Şikâyet Dosyasına Dön →
+          </a>
+        } @else if (auth.canGradeQuality()) {
           <a class="btn-quality-link" [routerLink]="['/kalite-siniflandirma']">Kalite Kararı →</a>
         }
         <button class="btn-thresholds" (click)="openThresholdModal()">⚙ Alarm Eşikleri</button>
