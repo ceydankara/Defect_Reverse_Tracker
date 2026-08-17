@@ -158,12 +158,6 @@
           @if (selectedTicket.extraNotes) {
             <div class="extra-notes">Not: {{ selectedTicket.extraNotes }}</div>
           }
-
-          <div class="analysis-bridge-box">
-            <button type="button" class="btn-analysis-bridge" (click)="openFullAnalysis()">
-              Analiz Başlat
-            </button>
-          </div>
         </div>
 
         @if (analysis) {
@@ -171,16 +165,21 @@
             <app-analysis-summary
               [analysis]="analysis"
               [coilId]="selectedTicket.batchId"
-              [showFullLink]="false" />
+              [showFullLink]="true"
+              [linkQueryParams]="analysisLinkParams()" />
           </div>
         }
 
         @if (qualityGrading) {
           <div class="panel-box quality-grading-card">
-            <div class="card-header-row">
-              <div class="header-titles">
-                <div class="panel-title-sub">KALİTE KONTROL & HURDA / İKİNCİ KALİTE AYRŞTIRMA</div>
-                <div class="panel-title-main">{{ qualityGrading.headline }}</div>
+            <div class="grading-hero">
+              <div class="grading-hero-text">
+                <div class="panel-title-sub">KALİTE KONTROL & AYRIŞTIRMA</div>
+                <h2 class="grading-title">{{ qualityGrading.headline }}</h2>
+                <div class="grading-meta">
+                  <span class="meta-pill confidence">Güven %{{ qualityGrading.confidence }}</span>
+                  <span class="meta-pill recommend">Öneri: {{ qualityGrading.recommendedGradeLabel }}</span>
+                </div>
               </div>
               @if (qualityGrading.requiresManualReview) {
                 <span class="manual-review-badge">Manuel Onay Önerilir</span>
@@ -193,10 +192,16 @@
                       [class.active]="isGradeActive('CUSTOMER')"
                       [class.recommended]="isRecommendedGrade('CUSTOMER')"
                       (click)="selectGrade('CUSTOMER')">
-                <span class="grade-icon">✓</span>
+                @if (isRecommendedGrade('CUSTOMER')) {
+                  <span class="rec-ribbon">Önerilen</span>
+                }
+                <div class="grade-icon-wrap"><span class="grade-icon">✓</span></div>
                 <strong>Müşteri Sevkiyatı</strong>
                 <small>Birincil Kalite</small>
-                <span class="grade-score">%{{ qualityGrading.customerScore }}</span>
+                <div class="grade-score-row">
+                  <span class="grade-score">%{{ qualityGrading.customerScore }}</span>
+                  <span class="grade-score-label">uygunluk</span>
+                </div>
               </button>
 
               <button type="button"
@@ -204,10 +209,16 @@
                       [class.active]="isGradeActive('SECOND_QUALITY')"
                       [class.recommended]="isRecommendedGrade('SECOND_QUALITY')"
                       (click)="selectGrade('SECOND_QUALITY')">
-                <span class="grade-icon">◐</span>
+                @if (isRecommendedGrade('SECOND_QUALITY')) {
+                  <span class="rec-ribbon">Önerilen</span>
+                }
+                <div class="grade-icon-wrap"><span class="grade-icon">◐</span></div>
                 <strong>İkinci Kalite</strong>
                 <small>İskontolu Satış / Yeniden İşleme</small>
-                <span class="grade-score">%{{ qualityGrading.secondQualityScore }}</span>
+                <div class="grade-score-row">
+                  <span class="grade-score">%{{ qualityGrading.secondQualityScore }}</span>
+                  <span class="grade-score-label">uygunluk</span>
+                </div>
               </button>
 
               <button type="button"
@@ -215,36 +226,60 @@
                       [class.active]="isGradeActive('SCRAP')"
                       [class.recommended]="isRecommendedGrade('SCRAP')"
                       (click)="selectGrade('SCRAP')">
-                <span class="grade-icon">✕</span>
+                @if (isRecommendedGrade('SCRAP')) {
+                  <span class="rec-ribbon">Önerilen</span>
+                }
+                <div class="grade-icon-wrap"><span class="grade-icon">✕</span></div>
                 <strong>Hurda</strong>
                 <small>Eritme / Hurda Sahası</small>
-                <span class="grade-score">%{{ qualityGrading.scrapScore }}</span>
+                <div class="grade-score-row">
+                  <span class="grade-score">%{{ qualityGrading.scrapScore }}</span>
+                  <span class="grade-score-label">uygunluk</span>
+                </div>
               </button>
             </div>
 
-            <div class="grade-bar">
-              <div class="bar-customer" [style.width.%]="qualityGrading.customerScore"></div>
-              <div class="bar-second" [style.width.%]="qualityGrading.secondQualityScore"></div>
-              <div class="bar-scrap" [style.width.%]="qualityGrading.scrapScore"></div>
+            <div class="grade-bar-wrap">
+              <div class="grade-bar-labels">
+                <span class="lbl-customer">Müşteri %{{ qualityGrading.customerScore }}</span>
+                <span class="lbl-second">2. Kalite %{{ qualityGrading.secondQualityScore }}</span>
+                <span class="lbl-scrap">Hurda %{{ qualityGrading.scrapScore }}</span>
+              </div>
+              <div class="grade-bar">
+                <div class="bar-customer" [style.width.%]="qualityGrading.customerScore"></div>
+                <div class="bar-second" [style.width.%]="qualityGrading.secondQualityScore"></div>
+                <div class="bar-scrap" [style.width.%]="qualityGrading.scrapScore"></div>
+              </div>
             </div>
 
-            <div class="indicators-section">
-              <div class="ind-header">SINIFLANDIRMA KRİTERLERİ</div>
-              <ul class="check-list">
-                @for (c of qualityGrading.criteria; track c) {
-                  <li><span class="check-icon">•</span><span>{{ c }}</span></li>
-                }
-              </ul>
-            </div>
+            <div class="grading-details-grid">
+              <div class="criteria-panel">
+                <div class="ind-header">Sınıflandırma Kriterleri</div>
+                <ul class="criteria-list">
+                  @for (c of qualityGrading.criteria; track c; let i = $index) {
+                    <li>
+                      <span class="criteria-no">{{ i + 1 }}</span>
+                      <span>{{ c }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
 
-            <div class="action-alert-box disposition-box">
-              <div class="alert-title">Yönlendirme Aksiyonu</div>
-              <div class="alert-body">{{ qualityGrading.dispositionAction }}</div>
+              <div class="disposition-panel">
+                <div class="disposition-icon" aria-hidden="true">→</div>
+                <div>
+                  <div class="alert-title">Yönlendirme Aksiyonu</div>
+                  <div class="alert-body">{{ qualityGrading.dispositionAction }}</div>
+                </div>
+              </div>
             </div>
 
             <div class="grade-confirm-row">
-              <textarea [(ngModel)]="gradeNotes" class="dark-textarea" rows="2"
-                        placeholder="Kalite mühendisi notu (isteğe bağlı)..."></textarea>
+              <div class="confirm-notes">
+                <label for="gradeNotes">Kalite mühendisi notu</label>
+                <textarea id="gradeNotes" [(ngModel)]="gradeNotes" class="dark-textarea" rows="2"
+                          placeholder="Karar gerekçesi veya saha yönlendirmesi..."></textarea>
+              </div>
               <button type="button" class="btn-submit" (click)="confirmQualityGrade()"
                       [disabled]="!selectedFinalGrade || gradeConfirmed">
                 @if (gradeConfirmed) {
