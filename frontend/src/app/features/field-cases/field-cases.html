@@ -140,7 +140,7 @@
         </div>
 
         @if (detail.responsibility.remediationPlan) {
-          <div class="panel-box remediation-panel" [class.production-case]="isProductionDominant()">
+          <div class="panel-box remediation-panel" [ngClass]="remediationPanelClass()">
             <div class="rem-header">
               <div>
                 <div class="panel-title-sub">TELAFİ & İŞ AKIŞI</div>
@@ -177,9 +177,9 @@
                 @for (opt of detail.responsibility.remediationPlan.options; track opt.code) {
                   <button type="button"
                           class="action-card"
-                          [class.active]="isActionSelected(opt.code)"
-                          [class.recommended]="opt.recommended"
+                          [ngClass]="actionCardClasses(opt)"
                           (click)="selectAction(opt)">
+                    <span class="action-icon" aria-hidden="true">{{ actionIcon(opt.code) }}</span>
                     <strong>{{ opt.label }}</strong>
                     @if (opt.recommended) {
                       <span class="rec-tag">Önerilen</span>
