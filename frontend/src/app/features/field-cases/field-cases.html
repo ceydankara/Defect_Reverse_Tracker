@@ -159,7 +159,13 @@
 
             @if (isProductionDominant() && !isResolved()) {
               <div class="production-notice">
-                Üretim kaynaklı vaka — hatayı kabul edin, müşteriye telafi sunun ve mutlaka CAPA açın.
+                Üretim kaynaklı vaka — hatayı kabul edin, müşteriye telafi seçin; CAPA’yı ayrıca işaretleyerek açabilirsiniz.
+              </div>
+            }
+
+            @if (isLogisticsDominant() && !isResolved()) {
+              <div class="logistics-notice">
+                Lojistik profili — kredi notu veya talebi reddet seçin; isterseniz lojistik CAPA’yı aynı kayıtta açın.
               </div>
             }
 
@@ -189,11 +195,19 @@
                 }
               </div>
 
-              @if (selectedAction === 'CAPA' || capaReference || isProductionDominant()) {
-                <div class="capa-row">
-                  <label>CAPA Referans No</label>
-                  <input type="text" class="dark-input" [(ngModel)]="capaReference"
-                         placeholder="Boş bırakılırsa otomatik üretilir (CAPA-2026-...)" />
+              @if (showCapaOption()) {
+                <div class="capa-option-block">
+                  <label class="capa-check">
+                    <input type="checkbox" [(ngModel)]="openCapa" />
+                    <span class="capa-check-label">{{ capaCheckboxLabel() }}</span>
+                  </label>
+                  @if (openCapa) {
+                    <div class="capa-row">
+                      <label>CAPA Referans No</label>
+                      <input type="text" class="dark-input" [(ngModel)]="capaReference"
+                             placeholder="Boş bırakılırsa otomatik üretilir (CAPA-2026-...)" />
+                    </div>
+                  }
                 </div>
               }
 
@@ -221,8 +235,8 @@
                   <strong>{{ detail.ticket.commercialActionLabel || '—' }}</strong>
                 </div>
                 @if (detail.ticket.capaReference) {
-                  <div class="resolved-row">
-                    <span>CAPA referansı</span>
+                  <div class="resolved-row capa-resolved">
+                    <span>CAPA</span>
                     <strong>{{ detail.ticket.capaReference }}</strong>
                   </div>
                 }
