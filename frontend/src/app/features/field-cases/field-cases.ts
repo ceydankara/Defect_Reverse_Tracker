@@ -29,6 +29,7 @@ export class FieldCasesComponent implements OnInit {
   statusMessage = '';
 
   selectedAction = '';
+  openCapa = false;
   capaReference = '';
   resolutionNotes = '';
   markResolvedOnSave = true;
@@ -122,7 +123,17 @@ export class FieldCasesComponent implements OnInit {
   private syncResolutionFormFromDetail(): void {
     if (!this.detail) return;
     const t = this.detail.ticket;
-    this.selectedAction = t.commercialAction ?? this.defaultRecommendedAction();
+    const plan = this.detail.responsibility?.remediationPlan;
+    const legacyCapaAction = t.commercialAction === 'CAPA';
+
+    if (legacyCapaAction) {
+      this.selectedAction = this.defaultRecommendedAction();
+      this.openCapa = true;
+    } else {
+      this.selectedAction = t.commercialAction ?? this.defaultRecommendedAction();
+      this.openCapa = !!t.capaReference || !!(plan?.capaDefaultOpen && !t.commercialAction);
+    }
+
     this.capaReference = t.capaReference ?? '';
     this.resolutionNotes = t.resolutionNotes ?? '';
   }
@@ -144,8 +155,17 @@ export class FieldCasesComponent implements OnInit {
     this.selectedAction = option.code;
   }
 
-  isProductionDominant(): boolean {
-    return this.detail?.responsibility?.dominantSource === 'PRODUCTION';
+  isLogisticsDominant(): boolean {
+    return this.detail?.responsibility?.dominantSource === 'LOGISTICS';
+  }
+
+  capaCheckboxLabel(): string {
+    return this.detail?.responsibility?.remediationPlan?.capaLabel
+      ?? (this.isProductionDominant() ? 'İç CAPA aç' : 'Lojistik CAPA aç');
+  }
+
+  showCapaOption(): boolean {
+    return !!this.detail?.responsibility?.remediationPlan?.capaOptional;
   }
 
   isResolved(): boolean {
@@ -167,6 +187,10 @@ export class FieldCasesComponent implements OnInit {
     });
   }
 
+  isProductionDominant(): boolean {
+    return this.detail?.responsibility?.dominantSource === 'PRODUCTION';
+  }
+
   saveResolution(): void {
     if (!this.selectedCase || !this.selectedAction) return;
     this.savingResolution = true;
@@ -174,7 +198,8 @@ export class FieldCasesComponent implements OnInit {
 
     this.defectService.applyFieldCaseResolution(this.selectedCase.ticketNumber, {
       commercialAction: this.selectedAction,
-      capaReference: this.capaReference.trim() || undefined,
+      openCapa: this.showCapaOption() ? this.openCapa : undefined,
+      capaReference: this.openCapa ? (this.capaReference.trim() || undefined) : undefined,
       resolutionNotes: this.resolutionNotes.trim() || undefined,
       markResolved: this.markResolvedOnSave,
     }).subscribe({
@@ -183,9 +208,10 @@ export class FieldCasesComponent implements OnInit {
         this.selectedCase = data.ticket;
         this.syncResolutionFormFromDetail();
         this.savingResolution = false;
+        const capaNote = data.ticket.capaReference ? ` · CAPA: ${data.ticket.capaReference}` : '';
         this.statusMessage = this.markResolvedOnSave
-          ? `Telafi aksiyonu kaydedildi ve dosya sonuçlandı: ${data.ticket.commercialActionLabel}`
-          : `Telafi aksiyonu kaydedildi: ${data.ticket.commercialActionLabel}`;
+          ? `Telafi aksiyonu kaydedildi ve dosya sonuçlandı: ${data.ticket.commercialActionLabel}${capaNote}`
+          : `Telafi aksiyonu kaydedildi: ${data.ticket.commercialActionLabel}${capaNote}`;
         this.loadCases(data.ticket.ticketNumber);
         setTimeout(() => { if (this.statusMessage.includes('kaydedildi')) this.statusMessage = ''; }, 3500);
       },

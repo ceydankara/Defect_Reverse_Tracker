@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +61,11 @@ public class FieldCaseService {
             ACTION_DISCOUNT, "İskontolu Kabul",
             ACTION_REJECT, "Talebi Reddet",
             ACTION_CAPA, "İç CAPA Kaydı"
+    );
+
+    /** Ticari telafi seçenekleri — CAPA ayrı isteğe bağlı bayrakla açılır */
+    private static final Set<String> COMMERCIAL_ACTIONS = Set.of(
+            ACTION_CREDIT, ACTION_REPLACEMENT, ACTION_DISCOUNT, ACTION_REJECT
     );
 
     private final DamageTicketRepository ticketRepository;
@@ -102,7 +108,7 @@ public class FieldCaseService {
 
     @Transactional
     public Optional<FieldCaseDetailDto> applyResolution(String ticketNumber, FieldCaseResolutionRequestDto request) {
-        if (request.getCommercialAction() == null || !ACTION_LABELS.containsKey(request.getCommercialAction())) {
+        if (request.getCommercialAction() == null || !COMMERCIAL_ACTIONS.contains(request.getCommercialAction())) {
             return Optional.empty();
         }
         return ticketRepository.findByTicketNumber(ticketNumber)
@@ -112,10 +118,12 @@ public class FieldCaseService {
                     if (request.getResolutionNotes() != null) {
                         ticket.setResolutionNotes(request.getResolutionNotes());
                     }
-                    if (ACTION_CAPA.equals(request.getCommercialAction())) {
+                    boolean openCapa = Boolean.TRUE.equals(request.getOpenCapa())
+                            || (request.getCapaReference() != null && !request.getCapaReference().isBlank());
+                    if (openCapa) {
                         ticket.setCapaReference(resolveCapaReference(ticket, request.getCapaReference()));
-                    } else if (request.getCapaReference() != null && !request.getCapaReference().isBlank()) {
-                        ticket.setCapaReference(request.getCapaReference().trim());
+                    } else {
+                        ticket.setCapaReference(null);
                     }
                     if (Boolean.TRUE.equals(request.getMarkResolved())) {
                         ticket.setCaseStatus(STATUS_RESOLVED);
@@ -251,13 +259,16 @@ public class FieldCaseService {
     private RemediationPlanDto buildRemediationPlan(String dominant, boolean productionAnomaly, int[] pcts) {
         List<String> steps = new ArrayList<>();
         List<RemediationOptionDto> options = new ArrayList<>();
+        boolean capaOptional = false;
+        String capaLabel = null;
+        boolean capaDefaultOpen = false;
 
         switch (dominant) {
             case SOURCE_PRODUCTION -> {
                 steps.add("Tam analiz ile üretim hattı / sensör sapmasını doğrulayın ve kayıt altına alın.");
                 steps.add("Sevk öncesi kalite kaydını bu dosyada kontrol edin (salt okunur özet).");
                 steps.add("Müşteriye teknik rapor sunun — hatayı kabul edin, telafi tipini seçin.");
-                steps.add("İç CAPA açın; ilgili hat bakımını yönlendirin, tekrarı önleyin.");
+                steps.add("İsteğe bağlı: iç CAPA açın; ilgili hat bakımını yönlendirin, tekrarı önleyin.");
                 steps.add("Seçilen telafi aksiyonunu kaydedin ve dosyayı sonuçlandırın.");
                 options.add(option(ACTION_CREDIT, "Kredi Notu",
                         "Bobin müşteride kalır; faturadan kısmi veya tam düşüm (ERP/muhasebe).", true));
@@ -265,21 +276,23 @@ public class FieldCaseService {
                         "Aynı spesifikasyonda acil yedek sevkiyat planlayın.", pcts[0] >= 55));
                 options.add(option(ACTION_DISCOUNT, "İskontolu Kabul",
                         "Hasar sınırlıysa müşteri kullanmaya devam eder, fiyat iskontosu uygulanır.", false));
-                options.add(option(ACTION_CAPA, "İç CAPA Kaydı",
-                        "Kök neden düzeltmesi — bakım ekibi, hat durdurma, proses iyileştirme.", true));
+                capaOptional = true;
+                capaLabel = "İç CAPA aç (kök neden / hat bakımı)";
+                capaDefaultOpen = true;
             }
             case SOURCE_LOGISTICS -> {
                 steps.add("Sevkiyat, depolama ve taşıma kayıtlarını (irsaliye, fotoğraf) inceleyin.");
                 steps.add("Hasar analizi ile üretim sensörlerinin nominal olduğunu doğrulayın.");
                 steps.add("Lojistik sorumluluğu netleştirin veya müşteriyle paylaşımlı sorumluluk değerlendirin.");
-                steps.add("Kredi notu veya sınırlı telafi önerin; gerekirse lojistik CAPA açın.");
+                steps.add("Kredi notu veya talebi reddet seçin; isteğe bağlı lojistik CAPA açın.");
                 steps.add("Dosyayı sonuçlandırın.");
                 options.add(option(ACTION_CREDIT, "Kredi Notu",
                         "Taşıma/depolama kaynaklı hasarda kısmi tazminat.", true));
                 options.add(option(ACTION_REJECT, "Talebi Reddet",
                         "Hasar müşteri istifleme/kullanımından — garanti dışı.", pcts[2] > pcts[1]));
-                options.add(option(ACTION_CAPA, "Lojistik CAPA",
-                        "Sevkiyat/depolama prosedürü iyileştirmesi.", false));
+                capaOptional = true;
+                capaLabel = "Lojistik CAPA aç (sevkiyat / depolama prosedürü)";
+                capaDefaultOpen = false;
             }
             default -> {
                 steps.add("Müşteri beyanı ve saha fotoğraflarını teknik raporla eşleştirin.");
@@ -311,6 +324,9 @@ public class FieldCaseService {
                 .dominantLabel(label)
                 .workflowSteps(steps)
                 .options(options)
+                .capaOptional(capaOptional)
+                .capaLabel(capaLabel)
+                .capaDefaultOpen(capaDefaultOpen)
                 .build();
     }
 

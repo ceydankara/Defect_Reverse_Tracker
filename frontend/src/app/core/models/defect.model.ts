@@ -192,10 +192,14 @@ export interface RemediationPlan {
   dominantLabel: string;
   workflowSteps: string[];
   options: RemediationOption[];
+  capaOptional?: boolean;
+  capaLabel?: string;
+  capaDefaultOpen?: boolean;
 }
 
 export interface FieldCaseResolutionRequest {
   commercialAction: string;
+  openCapa?: boolean;
   capaReference?: string;
   resolutionNotes?: string;
   markResolved?: boolean;
