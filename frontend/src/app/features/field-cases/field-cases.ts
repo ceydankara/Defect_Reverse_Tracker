@@ -217,6 +217,44 @@ export class FieldCasesComponent implements OnInit {
     return 'dom-cust';
   }
 
+  remediationPanelClass(): string {
+    const src = this.detail?.responsibility?.dominantSource;
+    if (src === 'PRODUCTION') return 'remediation-production';
+    if (src === 'LOGISTICS') return 'remediation-logistics';
+    return 'remediation-customer';
+  }
+
+  actionCardClasses(opt: RemediationOption): Record<string, boolean> {
+    const key = this.actionStyleKey(opt.code);
+    return {
+      [`action-${key}`]: true,
+      active: this.isActionSelected(opt.code),
+      recommended: opt.recommended,
+    };
+  }
+
+  actionStyleKey(code: string): string {
+    const map: Record<string, string> = {
+      CREDIT: 'credit',
+      REPLACEMENT: 'replacement',
+      DISCOUNT: 'discount',
+      REJECT_CLAIM: 'reject',
+      CAPA: 'capa',
+    };
+    return map[code] ?? 'default';
+  }
+
+  actionIcon(code: string): string {
+    const map: Record<string, string> = {
+      CREDIT: '₺',
+      REPLACEMENT: '↗',
+      DISCOUNT: '%',
+      REJECT_CLAIM: '✕',
+      CAPA: '⚙',
+    };
+    return map[code] ?? '•';
+  }
+
   /** Sevk öncesi fabrika kalite kaydı — müşteriye giden bobinlerde birincil onay zorunlu */
   sevkQualityLabel(): string {
     const label = this.detail?.ticket?.finalGradeLabel
