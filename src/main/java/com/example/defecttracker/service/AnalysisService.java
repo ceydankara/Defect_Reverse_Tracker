@@ -199,7 +199,7 @@ public class AnalysisService {
 
     /**
      * Üretim / lojistik yüzdeleri her bobinin sensör sapma profiline göre hesaplanır.
-     * Veritabanındaki sabit 85/15 veya 90/10 değerleri kullanılmaz.
+
      */
     private ImpactSplit computeImpactSplit(
             String coilId,
@@ -324,7 +324,7 @@ public class AnalysisService {
         }
         return "Üretim Hatları Temiz — Hasar Kaynağı: Lojistik / Taşıma";
     }
-
+  
     private List<String> buildEvidence(
             List<ProcessStage> stages,
             List<AnalysisResponseDto.SensorSummaryDto> summaries,
