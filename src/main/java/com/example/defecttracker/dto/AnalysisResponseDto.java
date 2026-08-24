@@ -7,11 +7,16 @@ import java.util.List;
 
 @Data
 public class AnalysisResponseDto {
+    public static final String CLASSIFICATION_NO_DATA = "NO_DATA";
+
     private String coilId;
     private String defectCode;
     private String steelGrade;
     private String classificationType;
     private String headline;
+    /** false when bobin yok veya sensör verisi yok — otomatik üretim/lojistik ayrımı yapılmaz */
+    private boolean dataAvailable = true;
+    private String dataStatusMessage;
 
     private List<StageDto> stages;
     private RootCauseDto rootCause;

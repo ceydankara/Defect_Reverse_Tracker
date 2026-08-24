@@ -27,4 +27,15 @@ export class AnalysisSummaryComponent {
   stageLabel(status: string): string {
     return status === 'ANOMALI' ? 'ANOMALİ' : 'OK';
   }
+
+  classificationLabel(): string {
+    switch (this.analysis.classificationType) {
+      case 'PRODUCTION':
+        return 'Üretim Kaynaklı';
+      case 'NO_DATA':
+        return 'Sensör verisi yok';
+      default:
+        return 'Lojistik / Dış Etken';
+    }
+  }
 }

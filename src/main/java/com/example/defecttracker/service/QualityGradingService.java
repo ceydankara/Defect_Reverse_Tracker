@@ -8,6 +8,8 @@ import com.example.defecttracker.entity.DamageTicket;
 import com.example.defecttracker.entity.QualityGradeRecord;
 import com.example.defecttracker.repository.DamageTicketRepository;
 import com.example.defecttracker.repository.QualityGradeRecordRepository;
+import com.example.defecttracker.repository.CoilRepository;
+import com.example.defecttracker.repository.SensorReadingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,8 +36,22 @@ public class QualityGradingService {
 
     private final QualityGradeRecordRepository gradeRecordRepository;
     private final DamageTicketRepository ticketRepository;
+    private final CoilIdResolver coilIdResolver;
+    private final CoilRepository coilRepository;
+    private final SensorReadingRepository sensorReadingRepository;
 
     public QualityGradingDto grade(AnalysisResponseDto analysis) {
+        if (analysis == null || !analysis.isDataAvailable()) {
+            return unavailableGrade(
+                    analysis != null ? analysis.getCoilId() : "",
+                    analysis != null && analysis.getDataStatusMessage() != null
+                            ? analysis.getDataStatusMessage()
+                            : "Sensör verisi bulunamadı.");
+        }
+        if (analysis.getSensorSummaries() == null || analysis.getSensorSummaries().isEmpty()) {
+            return unavailableGrade(analysis.getCoilId(), "Bu bobin için sensör verisi bulunamadı.");
+        }
+
         int anomalyCount = countAnomalies(analysis);
         double maxDeviation = maxDeviationPct(analysis);
         boolean production = "PRODUCTION".equals(analysis.getClassificationType());
@@ -124,8 +140,32 @@ public class QualityGradingService {
         return dto;
     }
 
+    public QualityGradingDto unavailableGrade(String coilId, String message) {
+        QualityGradingDto dto = new QualityGradingDto();
+        dto.setDataAvailable(false);
+        dto.setHeadline((coilId != null && !coilId.isBlank() ? coilId + " — " : "")
+                + "Sensör verisi yok, otomatik kalite önerisi yapılamaz");
+        dto.setRequiresManualReview(true);
+        dto.setCustomerScore(0);
+        dto.setSecondQualityScore(0);
+        dto.setScrapScore(0);
+        dto.setDispositionAction("MES sensör verisi gelene kadar otomatik kalite kararı verilemez.");
+        dto.setCriteria(List.of(
+                message,
+                "Sensör verisi olmadan hurda / ikinci kalite / müşteri sevkiyatı önerisi üretilmez.",
+                "Kalite mühendisi manuel inceleme yapmalı veya bobin kaydının sisteme aktarılmasını beklemelidir."
+        ));
+        dto.setGradeLabels(gradeLabelMap());
+        return dto;
+    }
+
     public ConfirmGradeResponseDto confirmDecision(ConfirmGradeRequestDto request) {
         String coilId = request.getCoilId().trim();
+
+        if (!hasSensorData(coilId)) {
+            throw new IllegalStateException(
+                    "Sensör verisi olmadan kalite kararı verilemez. Bobin kaydının MES'ten aktarılması gerekir.");
+        }
         String recommended = request.getRecommendedGrade() != null
                 ? request.getRecommendedGrade()
                 : request.getFinalGrade();
@@ -233,5 +273,12 @@ public class QualityGradingService {
         return BigDecimal.valueOf(part * 100.0 / total)
                 .setScale(0, RoundingMode.HALF_UP)
                 .intValue();
+    }
+
+    private boolean hasSensorData(String coilId) {
+        return coilIdResolver.resolve(coilId)
+                .flatMap(resolved -> coilRepository.findById(resolved))
+                .map(coil -> !sensorReadingRepository.findByCoilIdOrderByTimeSecondAsc(coil.getCoilId()).isEmpty())
+                .orElse(false);
     }
 }

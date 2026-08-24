@@ -260,8 +260,8 @@
           </div>
         }
 
-        @if (detail.analysis || detail.analysisHeadline) {
-          <div class="panel-box analysis-compact">
+        @if (detail.analysisHeadline || detail.analysis) {
+          <div class="panel-box analysis-compact" [class.no-data]="detail.analysis?.dataAvailable === false || !detail.analysis">
             <div class="analysis-compact-body">
               <div>
                 <div class="panel-title-sub">HASAR ANALİZİ</div>
@@ -271,7 +271,7 @@
                   <p class="analysis-teaser muted">Detaylı sensör ve kök neden analizi hasar analizi ekranında.</p>
                 }
               </div>
-              @if (auth.canAnalyze()) {
+              @if (auth.canAnalyze() && detail.analysis?.dataAvailable !== false) {
                 <a [routerLink]="['/hasar-analiz']" [queryParams]="analysisQueryParams()" class="btn-analysis-start">
                   Ana Analiz Ekranına Git →
                 </a>

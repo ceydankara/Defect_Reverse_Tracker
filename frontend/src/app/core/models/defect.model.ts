@@ -1,9 +1,13 @@
+export type ClassificationType = 'PRODUCTION' | 'LOGISTICS' | 'NO_DATA';
+
 export interface AnalysisResponseDto {
   coilId: string;
   defectCode: string;
   steelGrade?: string;
-  classificationType?: 'PRODUCTION' | 'LOGISTICS';
+  classificationType?: ClassificationType;
   headline?: string;
+  dataAvailable?: boolean;
+  dataStatusMessage?: string;
   stages: StageDto[];
   rootCause: RootCauseDto;
   sensorSummaries: SensorSummaryDto[];
@@ -86,10 +90,11 @@ export interface PreviousReport {
 }
 
 export interface QualityGrading {
-  recommendedGrade: 'CUSTOMER' | 'SECOND_QUALITY' | 'SCRAP';
-  recommendedGradeLabel: string;
+  dataAvailable?: boolean;
+  recommendedGrade?: 'CUSTOMER' | 'SECOND_QUALITY' | 'SCRAP';
+  recommendedGradeLabel?: string;
   headline: string;
-  confidence: number;
+  confidence?: number;
   customerScore: number;
   secondQualityScore: number;
   scrapScore: number;

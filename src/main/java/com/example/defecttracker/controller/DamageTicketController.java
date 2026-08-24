@@ -8,7 +8,6 @@ import com.example.defecttracker.dto.TicketQueueItemDto;
 import com.example.defecttracker.entity.DamageTicket;
 import com.example.defecttracker.repository.DamageTicketRepository;
 import com.example.defecttracker.service.CoilHistoryService;
-import com.example.defecttracker.service.CoilProvisioningService;
 import com.example.defecttracker.service.FieldCaseService;
 import com.example.defecttracker.service.TicketQueueService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ public class DamageTicketController {
     private final DamageTicketRepository ticketRepository;
     private final CoilHistoryService coilHistoryService;
     private final TicketQueueService ticketQueueService;
-    private final CoilProvisioningService coilProvisioningService;
     private final FieldCaseService fieldCaseService;
 
     @GetMapping("/queue")
@@ -65,7 +63,6 @@ public class DamageTicketController {
         fieldCaseService.initializeFieldCase(ticket);
 
         DamageTicket saved = ticketRepository.save(ticket);
-        coilProvisioningService.ensureCoilForTicket(saved.getBatchId(), saved.getDefectType());
         return ResponseEntity.ok(saved);
     }
 

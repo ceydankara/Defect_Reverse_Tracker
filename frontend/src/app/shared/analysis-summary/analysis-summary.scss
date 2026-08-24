@@ -87,4 +87,10 @@
     color: var(--danger-text);
     border-color: var(--danger-border);
   }
+
+  &.no-data {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    border-color: var(--border-subtle);
+  }
 }
