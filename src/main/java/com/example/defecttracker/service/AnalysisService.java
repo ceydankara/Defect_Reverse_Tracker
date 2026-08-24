@@ -42,7 +42,19 @@ public class AnalysisService {
                 .orElse(null);
     }
 
+    public boolean hasSensorData(String coilId) {
+        return coilIdResolver.resolve(coilId)
+                .flatMap(resolved -> coilRepository.findById(resolved))
+                .map(coil -> !sensorReadingRepository.findByCoilIdOrderByTimeSecondAsc(coil.getCoilId()).isEmpty())
+                .orElse(false);
+    }
+
     private AnalysisResponseDto buildAnalysis(String coilId, Coil coil) {
+        List<SensorReading> readings = sensorReadingRepository.findByCoilIdOrderByTimeSecondAsc(coilId);
+        if (readings.isEmpty()) {
+            return buildNoDataResponse(coilId, coil, "Bu bobin için sensör verisi bulunamadı.");
+        }
+
         AnalysisResponseDto response = new AnalysisResponseDto();
         response.setCoilId(coilId);
         response.setSteelGrade(coil.getSteelGrade());
@@ -51,7 +63,6 @@ public class AnalysisService {
                 .findFirst()
                 .ifPresent(d -> response.setDefectCode(d.getDefectCode()));
 
-        List<SensorReading> readings = sensorReadingRepository.findByCoilIdOrderByTimeSecondAsc(coilId);
         Map<String, List<SensorReading>> grouped = readings.stream()
                 .collect(Collectors.groupingBy(
                         r -> compositeKey(r.getStageName(), r.getSensorKey()),
@@ -99,6 +110,26 @@ public class AnalysisService {
         }
 
         response.setQualityGrading(qualityGradingService.grade(response));
+        return response;
+    }
+
+    private AnalysisResponseDto buildNoDataResponse(String coilId, Coil coil, String message) {
+        AnalysisResponseDto response = new AnalysisResponseDto();
+        response.setCoilId(coilId);
+        response.setSteelGrade(coil.getSteelGrade());
+        response.setDataAvailable(false);
+        response.setDataStatusMessage(message);
+        response.setClassificationType(AnalysisResponseDto.CLASSIFICATION_NO_DATA);
+        response.setHeadline("Sensör verisi yok — üretim/lojistik ayrımı yapılamaz");
+        response.setStages(List.of());
+        response.setSensorSummaries(List.of());
+        response.setTimeSeriesData(List.of());
+        response.setEvidenceIndicators(List.of(
+                message,
+                "Sensör verisi olmadığı için hasarın üretimden kaynaklanmadığı sonucuna varılamaz.",
+                "Analiz için MES/üretim sisteminden bobin sensör kaydı gereklidir."
+        ));
+        response.setQualityGrading(qualityGradingService.unavailableGrade(coilId, message));
         return response;
     }
 

@@ -23,8 +23,10 @@
   }
 
   @if (analysis.classificationType) {
-    <div class="classification-tag" [class.production]="analysis.classificationType === 'PRODUCTION'">
-      {{ analysis.classificationType === 'PRODUCTION' ? 'Üretim Kaynaklı' : 'Lojistik / Dış Etken' }}
+    <div class="classification-tag"
+         [class.production]="analysis.classificationType === 'PRODUCTION'"
+         [class.no-data]="analysis.classificationType === 'NO_DATA'">
+      {{ classificationLabel() }}
     </div>
   }
 </div>

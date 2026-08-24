@@ -7,7 +7,7 @@ import { DefectService } from '../../core/services/defect';
 import { AuthService } from '../../core/services/auth.service';
 import { ThresholdProfileService } from '../../core/services/threshold-profile.service';
 import { ThresholdPresetService, SensorSource, DEFAULT_SENSOR_CATALOG } from '../../core/services/threshold-preset.service';
-import { AnalysisResponseDto, SensorSummaryDto } from '../../core/models/defect.model';
+import { AnalysisResponseDto, ClassificationType, SensorSummaryDto } from '../../core/models/defect.model';
 import { ThresholdSensor } from '../../core/models/threshold.model';
 import { Chart, registerables } from 'chart.js';
 
@@ -55,7 +55,7 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
   filteredSensors: SensorCard[] = [];
   stages: StageCard[] = [];
   backendStages: StageCard[] = [];
-  classificationType: 'PRODUCTION' | 'LOGISTICS' = 'LOGISTICS';
+  classificationType: ClassificationType = 'LOGISTICS';
 
   rootCauseEquipment = '';
   productionImpact = 0;
@@ -134,8 +134,10 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private applyAnalysis(data: AnalysisResponseDto): void {
-    if (!data?.sensorSummaries?.length) {
-      this.errorMessage = 'Bobin bulundu ancak sensör verisi yok.';
+    if (data.dataAvailable === false || !data?.sensorSummaries?.length) {
+      this.errorMessage = data.dataStatusMessage
+        ?? data.headline
+        ?? 'Bobin bulundu ancak sensör verisi yok. Üretim/lojistik ayrımı yapılamaz.';
       this.isLoading = false;
       return;
     }
@@ -210,7 +212,9 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
 
   private analysisErrorMessage(err: HttpErrorResponse): string {
     if (err.status === 403) return 'Hasar analizi için yetkiniz yok.';
-    if (err.status === 404) return `Bobin bulunamadı: "${this.batchId.trim()}"`;
+    if (err.status === 404) {
+      return `Bobin bulunamadı: "${this.batchId.trim()}". Sensör verisi olmadan analiz yapılamaz.`;
+    }
     if (err.status === 0) return 'Backend erişilemiyor.';
     return 'Analiz başlatılamadı.';
   }

@@ -8,6 +8,8 @@ import java.util.Map;
 
 @Data
 public class QualityGradingDto {
+    /** false when sensör verisi yok — otomatik kalite önerisi ve onay kapalı */
+    private boolean dataAvailable = true;
     private String recommendedGrade;
     private String recommendedGradeLabel;
     private String headline;

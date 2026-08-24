@@ -160,7 +160,7 @@
           }
         </div>
 
-        @if (analysis) {
+        @if (analysis && analysis.dataAvailable !== false) {
           <div class="panel-box analysis-panel">
             <app-analysis-summary
               [analysis]="analysis"
@@ -170,7 +170,7 @@
           </div>
         }
 
-        @if (qualityGrading) {
+        @if (qualityGrading && !isGradingBlocked()) {
           <div class="panel-box quality-grading-card">
             <div class="grading-hero">
               <div class="grading-hero-text">
@@ -292,10 +292,15 @@
               </button>
             </div>
           </div>
+        } @else if (isGradingBlocked()) {
+          <div class="panel-box no-data-panel">
+            <div class="panel-title-sub">KALİTE KARARI</div>
+            <p class="no-data-message">{{ gradingBlockedMessage() }}</p>
+            <p class="hint">Sensör verisi gelene kadar otomatik sınıflandırma ve kalite onayı yapılamaz.</p>
+          </div>
         } @else {
           <div class="panel-box empty-detail">
-            <p>Analiz verisi hazırlanıyor veya bobin henüz sisteme eklenmedi.</p>
-            <p class="hint">Demo bobinler: BOBIN-2026-9041, BOBIN-2026-9050</p>
+            <p>Analiz verisi hazırlanıyor...</p>
           </div>
         }
       }

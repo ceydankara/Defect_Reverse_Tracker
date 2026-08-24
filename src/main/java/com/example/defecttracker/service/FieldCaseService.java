@@ -70,7 +70,6 @@ public class FieldCaseService {
 
     private final DamageTicketRepository ticketRepository;
     private final AnalysisService analysisService;
-    private final CoilProvisioningService coilProvisioningService;
     private final CoilHistoryService coilHistoryService;
     private final QualityGradeRecordRepository gradeRecordRepository;
     private final CoilIdResolver coilIdResolver;
@@ -159,11 +158,12 @@ public class FieldCaseService {
     }
 
     private FieldCaseDetailDto buildDetail(DamageTicket ticket) {
-        String resolvedCoilId = coilProvisioningService.ensureCoilForTicket(
-                ticket.getBatchId(), ticket.getDefectType());
-        AnalysisResponseDto analysis = analysisService.getAnalysisByCoilId(resolvedCoilId);
+        AnalysisResponseDto analysis = coilIdResolver.resolve(ticket.getBatchId())
+                .map(analysisService::getAnalysisByCoilId)
+                .orElse(null);
+        String analysisHeadline = resolveAnalysisHeadline(ticket.getBatchId(), analysis);
 
-        Optional<QualityGradeRecord> priorGrade = resolvePriorQualityGrade(resolvedCoilId, ticket.getBatchId());
+        Optional<QualityGradeRecord> priorGrade = resolvePriorQualityGrade(ticket.getBatchId());
 
         var history = coilHistoryService.getHistory(ticket.getBatchId());
         List<DamageTicket> related = ticketRepository.findByBatchIdIgnoreCaseOrderByCreatedAtDesc(ticket.getBatchId());
@@ -171,7 +171,7 @@ public class FieldCaseService {
         return FieldCaseDetailDto.builder()
                 .ticket(toItemDto(ticket))
                 .analysis(analysis)
-                .analysisHeadline(analysis != null ? analysis.getHeadline() : null)
+                .analysisHeadline(analysisHeadline)
                 .responsibility(computeResponsibility(analysis, ticket, priorGrade, history.getTotalReports()))
                 .priorQualityDecision(priorGrade.map(g -> GRADE_LABELS.getOrDefault(g.getFinalGrade(), g.getFinalGrade()))
                         .orElse(GRADE_LABELS.get(QualityGradingService.CUSTOMER)))
@@ -181,16 +181,30 @@ public class FieldCaseService {
                 .build();
     }
 
+    private String resolveAnalysisHeadline(String batchId, AnalysisResponseDto analysis) {
+        if (analysis == null) {
+            return "Bobin bulunamadı (\"" + batchId + "\") — sensör verisi olmadan analiz yapılamaz.";
+        }
+        if (!analysis.isDataAvailable()) {
+            return analysis.getHeadline();
+        }
+        return analysis.getHeadline();
+    }
+
     private ResponsibilityAnalysisDto computeResponsibility(
             AnalysisResponseDto analysis,
             DamageTicket ticket,
             Optional<QualityGradeRecord> priorGrade,
             int priorReportCount) {
 
-        boolean production = analysis != null && "PRODUCTION".equals(analysis.getClassificationType());
-        int prodBase = analysis != null && analysis.getRootCause() != null
+        if (analysis == null || !analysis.isDataAvailable()) {
+            return buildUnavailableResponsibility(ticket, priorGrade, priorReportCount, analysis);
+        }
+
+        boolean production = "PRODUCTION".equals(analysis.getClassificationType());
+        int prodBase = analysis.getRootCause() != null
                 ? safeInt(analysis.getRootCause().getProductionImpactPct()) : 0;
-        int logBase = analysis != null && analysis.getRootCause() != null
+        int logBase = analysis.getRootCause() != null
                 ? safeInt(analysis.getRootCause().getLogisticImpactPct()) : 50;
 
         double prod = production ? prodBase * 0.72 : prodBase * 0.35;
@@ -243,6 +257,64 @@ public class FieldCaseService {
                 .indicators(indicators)
                 .dominantSource(dominant)
                 .remediationPlan(plan)
+                .build();
+    }
+
+    private ResponsibilityAnalysisDto buildUnavailableResponsibility(
+            DamageTicket ticket,
+            Optional<QualityGradeRecord> priorGrade,
+            int priorReportCount,
+            AnalysisResponseDto analysis) {
+
+        List<String> indicators = new ArrayList<>();
+        if (analysis == null) {
+            indicators.add("Bobin kaydı sistemde bulunamadı — MES/üretim verisi yok.");
+        } else {
+            indicators.add("Bobin kaydı var ancak sensör verisi bulunamadı.");
+        }
+        indicators.add("Sensör verisi olmadan üretim veya lojistik kaynaklı olduğu otomatik saptanamaz.");
+        if (priorReportCount > 1) {
+            indicators.add("Bu bobin daha önce " + priorReportCount + " kez raporlandı.");
+        }
+        if (priorGrade.isPresent()) {
+            indicators.add("Mevcut kalite kararı: " + GRADE_LABELS.getOrDefault(
+                    priorGrade.get().getFinalGrade(), priorGrade.get().getFinalGrade()));
+        }
+        if (ticket.getExtraNotes() != null && !ticket.getExtraNotes().isBlank()) {
+            indicators.add("Müşteri beyanı kayıtlı.");
+        }
+
+        return ResponsibilityAnalysisDto.builder()
+                .productionPct(0)
+                .logisticsPct(0)
+                .customerPct(0)
+                .summary("Sensör verisi yok — otomatik sorumluluk analizi yapılamadı.")
+                .recommendedAction("Önce bobin sensör kaydının MES'ten alınmasını sağlayın veya fiziksel inceleme ile manuel değerlendirin.")
+                .indicators(indicators)
+                .dominantSource(SOURCE_CUSTOMER)
+                .remediationPlan(buildManualReviewPlan())
+                .build();
+    }
+
+    private RemediationPlanDto buildManualReviewPlan() {
+        List<String> steps = List.of(
+                "Bobin kaydının MES/üretim sisteminde olup olmadığını kontrol edin.",
+                "Sensör verisi gelene kadar otomatik üretim/lojistik ayrımı yapılamaz.",
+                "Fiziksel numune, fotoğraf ve müşteri beyanı ile manuel telafi değerlendirmesi yapın.",
+                "Telafi kararını kaydedin ve dosyayı sonuçlandırın."
+        );
+        List<RemediationOptionDto> options = List.of(
+                option(ACTION_CREDIT, "Kredi Notu (Manuel)",
+                        "Manuel inceleme sonrası — sensör verisi olmadan otomatik önerilmez.", false),
+                option(ACTION_REJECT, "Talebi Reddet (Manuel)",
+                        "Manuel inceleme sonrası — garanti kapsamı dışı değerlendirmesi.", false)
+        );
+        return RemediationPlanDto.builder()
+                .dominantSource(SOURCE_CUSTOMER)
+                .dominantLabel("Veri yetersiz — manuel inceleme gerekli")
+                .workflowSteps(steps)
+                .options(options)
+                .capaOptional(false)
                 .build();
     }
 

@@ -184,6 +184,10 @@ export class QualityQueueComponent implements OnInit {
 
   confirmQualityGrade(): void {
     if (!this.selectedTicket || !this.qualityGrading || !this.selectedFinalGrade) return;
+    if (this.qualityGrading.dataAvailable === false) {
+      alert('Sensör verisi olmadan kalite kararı verilemez.');
+      return;
+    }
 
     this.defectService.confirmGrade({
       coilId: this.selectedTicket.batchId,
@@ -245,5 +249,14 @@ export class QualityQueueComponent implements OnInit {
       auto: '1',
       from: 'kalite',
     };
+  }
+
+  isGradingBlocked(): boolean {
+    return !this.qualityGrading || this.qualityGrading.dataAvailable === false;
+  }
+
+  gradingBlockedMessage(): string {
+    return this.analysisHeadline
+      || 'Bobin sensör verisi bulunamadı — otomatik kalite önerisi ve onay yapılamaz.';
   }
 }

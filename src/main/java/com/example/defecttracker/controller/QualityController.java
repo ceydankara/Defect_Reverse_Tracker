@@ -27,6 +27,9 @@ public class QualityController {
         if (analysis == null) {
             return ResponseEntity.notFound().build();
         }
+        if (!analysis.isDataAvailable()) {
+            return ResponseEntity.ok(analysis.getQualityGrading());
+        }
         return ResponseEntity.ok(qualityGradingService.grade(analysis));
     }
 
@@ -38,6 +41,10 @@ public class QualityController {
         if (request.getInspectorName() == null || request.getInspectorName().isBlank()) {
             request.setInspectorName(UserDisplayNames.formatInspector(user));
         }
-        return ResponseEntity.ok(qualityGradingService.confirmDecision(request));
+        try {
+            return ResponseEntity.ok(qualityGradingService.confirmDecision(request));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

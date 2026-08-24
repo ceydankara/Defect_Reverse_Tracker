@@ -36,9 +36,7 @@ public class TicketQueueService {
     private final DamageTicketRepository ticketRepository;
     private final QualityGradeRecordRepository gradeRecordRepository;
     private final AnalysisService analysisService;
-    private final QualityGradingService qualityGradingService;
     private final CoilIdResolver coilIdResolver;
-    private final CoilProvisioningService coilProvisioningService;
 
     public List<TicketQueueItemDto> listQueue(String status) {
         String normalized = status == null ? "all" : status.trim().toLowerCase(Locale.ROOT);
@@ -71,19 +69,32 @@ public class TicketQueueService {
                 .orElse(related.get(0));
 
         TicketQueueItemDto item = mergeCoilGroup(related);
-        String resolvedCoilId = coilProvisioningService.ensureCoilForTicket(
-                batchId, primary.getDefectType());
-        AnalysisResponseDto analysis = analysisService.getAnalysisByCoilId(resolvedCoilId);
-        QualityGradingDto grading = analysis != null
-                ? analysis.getQualityGrading()
-                : qualityGradingService.grade(buildMinimalAnalysis(primary));
+        AnalysisResponseDto analysis = analysisService.getAnalysisByCoilId(batchId);
+        QualityGradingDto grading = null;
+        if (analysis != null && analysis.isDataAvailable()) {
+            grading = analysis.getQualityGrading();
+        } else if (analysis != null) {
+            grading = analysis.getQualityGrading();
+        }
+
+        String headline = resolveAnalysisHeadline(batchId, analysis);
 
         return TicketQueueDetailDto.builder()
                 .ticket(item)
                 .qualityGrading(grading)
-                .analysisHeadline(analysis != null ? analysis.getHeadline() : null)
+                .analysisHeadline(headline)
                 .analysis(analysis)
                 .build();
+    }
+
+    private String resolveAnalysisHeadline(String batchId, AnalysisResponseDto analysis) {
+        if (analysis == null) {
+            return "Bobin bulunamadı (\"" + batchId + "\") — sensör verisi olmadan analiz yapılamaz.";
+        }
+        if (!analysis.isDataAvailable()) {
+            return analysis.getHeadline();
+        }
+        return analysis.getHeadline();
     }
 
     private TicketQueueItemDto mergeCoilGroup(List<DamageTicket> tickets) {
@@ -152,17 +163,6 @@ public class TicketQueueService {
             return STATUS_DECIDED.equals(item.getGradeStatus());
         }
         return true;
-    }
-
-    private AnalysisResponseDto buildMinimalAnalysis(DamageTicket ticket) {
-        AnalysisResponseDto dto = new AnalysisResponseDto();
-        dto.setCoilId(ticket.getBatchId());
-        dto.setClassificationType("LOGISTICS");
-        dto.setDefectCode("");
-        dto.setStages(List.of());
-        dto.setSensorSummaries(List.of());
-        dto.setRootCause(new AnalysisResponseDto.RootCauseDto());
-        return dto;
     }
 
     private String labelFor(String grade) {
