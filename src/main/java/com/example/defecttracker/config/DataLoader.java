@@ -73,11 +73,11 @@ public class DataLoader implements CommandLineRunner {
     /** Eski demo kayıtlarındaki genel unvanları kişi adlarıyla günceller */
     private void refreshLegacyInspectorNames() {
         Map<String, String> byCoil = Map.of(
-                "BOBIN-2026-9070", "Kalite Uzmanı Ceyda Ankara",
+                "BOBIN-2026-9070", "Yönetici Ceyda Ankara",
                 "BOBIN-2026-9050", "Kalite Uzmanı Ayşe Korkmaz",
                 "BOBIN-2026-9060", "Kalite Uzmanı Ayşe Korkmaz",
                 "BOBIN-2026-9080", "Kalite Müdürü Mehmet Yılmaz",
-                "BOBIN-2026-9090", "Kalite Uzmanı Ceyda Ankara"
+                "BOBIN-2026-9090", "Yönetici Ceyda Ankara"
         );
         byCoil.forEach((coilId, inspector) ->
                 gradeRecordRepository.findTopByCoilIdIgnoreCaseOrderByCreatedAtDesc(coilId)
@@ -121,10 +121,11 @@ public class DataLoader implements CommandLineRunner {
 
     private void seedUsers() {
         upsertUser("admin", "admin123", "Mehmet Yılmaz", "Kalite Müdürü", "ADMIN");
-        upsertUser("ceyda", "ceyda123", "Ceyda Ankara", "Kalite Uzmanı", "QUALITY");
-        upsertUser("kalite", "kalite123", "Ayşe Korkmaz", "Kalite Uzmanı", "QUALITY");
+        upsertUser("ceyda", "yonetici123", "Ceyda Ankara", "Yönetici", "ADMIN");
+        upsertUser("kalite", "personel123", "Elif Yıldız", "Kalite Personeli", "QUALITY");
         upsertUser("bakim", "bakim123", "Ali Demir", "Bakım Operatörü", "MAINTENANCE");
         upsertUser("satis", "satis123", "Deniz Arslan", "Satış Temsilcisi", "SALES");
+        userRepository.findByUsername("elif").ifPresent(userRepository::delete);
     }
 
     private void upsertUser(String username, String password, String fullName, String jobTitle, String role) {
@@ -354,7 +355,7 @@ public class DataLoader implements CommandLineRunner {
     private void seedQualityDecisions() {
         seedQualityGrade("BOBIN-2026-9070", "TKT-2026-070",
                 QualityGradingService.SCRAP, QualityGradingService.SCRAP,
-                "Kalite Uzmanı Ceyda Ankara",
+                "Yönetici Ceyda Ankara",
                 "Sıcak hadde çatlak — sevkiyat öncesi hurda ayrıştırması onaylandı.",
                 LocalDateTime.now().minusDays(7));
     }
@@ -378,7 +379,7 @@ public class DataLoader implements CommandLineRunner {
                 LocalDateTime.now().minusDays(22));
         seedQualityGrade("BOBIN-2026-9090", null,
                 QualityGradingService.CUSTOMER, QualityGradingService.CUSTOMER,
-                "Kalite Uzmanı Ceyda Ankara",
+                "Yönetici Ceyda Ankara",
                 "Sevk öncesi birincil kalite onayı.",
                 LocalDateTime.now().minusDays(16));
     }

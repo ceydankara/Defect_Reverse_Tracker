@@ -61,7 +61,7 @@ export class AuthService {
     return this.hasAnyRole(FIELD_CASE_ROLES);
   }
 
-  /** Karar veren satırı: "Kalite Uzmanı Ceyda Ankara" */
+  /** Karar veren satırı: "Yönetici Ceyda Ankara" */
   inspectorDisplayName(): string {
     const u = this.userSignal();
     if (!u) return 'Kalite Kontrol';

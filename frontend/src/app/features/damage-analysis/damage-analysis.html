@@ -12,6 +12,9 @@
         Fabrika kalite kuyruğundan yönlendirildiniz — <strong>{{ batchId }}</strong> için analiz
         @if (autoStarted && isLoading) { başlatılıyor... }
         @else if (autoStarted && isAnalyzed) { tamamlandı. }
+        <a [routerLink]="['/kalite-siniflandirma']" [queryParams]="qualityReturnQueryParams()" class="banner-return-link">
+          Kalite kararına dön →
+        </a>
       </div>
     }
     @if (fromFieldCase && batchId) {
@@ -59,7 +62,11 @@
             Müşteri Şikâyet Dosyasına Dön →
           </a>
         } @else if (auth.canGradeQuality()) {
-          <a class="btn-quality-link" [routerLink]="['/kalite-siniflandirma']">Kalite Kararı →</a>
+          <a class="btn-quality-link"
+             [routerLink]="['/kalite-siniflandirma']"
+             [queryParams]="qualityReturnQueryParams()">
+            {{ fromQuality ? 'Kalite Kararına Dön →' : 'Kalite Kararı →' }}
+          </a>
         }
         <button class="btn-thresholds" (click)="openThresholdModal()">⚙ Alarm Eşikleri</button>
       </div>

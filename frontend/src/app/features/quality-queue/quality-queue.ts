@@ -40,15 +40,18 @@ export class QualityQueueComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
       const ticket = params.get('ticket');
+      const coil = params.get('coil');
       const status = params.get('status');
       if (status === 'all' || status === 'pending' || status === 'decided') {
         this.filter = status;
+      } else if (ticket || coil) {
+        this.filter = 'all';
       }
-      this.loadTickets(ticket ?? undefined);
+      this.loadTickets(ticket ?? undefined, coil ?? undefined);
     });
   }
 
-  loadTickets(selectTicketNumber?: string): void {
+  loadTickets(selectTicketNumber?: string, selectCoil?: string): void {
     this.loadingList = true;
     this.errorMessage = '';
 
@@ -68,6 +71,20 @@ export class QualityQueueComponent implements OnInit {
           }
           this.loadTicketByNumber(selectTicketNumber);
           return;
+        }
+
+        if (selectCoil) {
+          const coilKey = selectCoil.trim().toUpperCase();
+          const coilMatch = items.find((t) => t.batchId?.toUpperCase() === coilKey);
+          if (coilMatch) {
+            this.selectTicket(coilMatch);
+            return;
+          }
+          if (this.filter !== 'all') {
+            this.filter = 'all';
+            this.loadTickets(undefined, selectCoil);
+            return;
+          }
         }
 
         if (!this.selectedTicket && items.length > 0) {
@@ -244,11 +261,15 @@ export class QualityQueueComponent implements OnInit {
   }
 
   analysisLinkParams(): Record<string, string> {
-    return {
+    const params: Record<string, string> = {
       coil: this.selectedTicket?.batchId ?? '',
       auto: '1',
       from: 'kalite',
     };
+    if (this.selectedTicket?.ticketNumber) {
+      params['ticket'] = this.selectedTicket.ticketNumber;
+    }
+    return params;
   }
 
   isGradingBlocked(): boolean {

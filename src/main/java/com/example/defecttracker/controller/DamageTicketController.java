@@ -1,15 +1,18 @@
 package com.example.defecttracker.controller;
 
+import com.example.defecttracker.config.RolePermissions;
 import com.example.defecttracker.dto.CoilHistoryDto;
 import com.example.defecttracker.dto.CoilHistoryResponseDto;
 import com.example.defecttracker.dto.CreateTicketRequestDto;
 import com.example.defecttracker.dto.TicketQueueDetailDto;
 import com.example.defecttracker.dto.TicketQueueItemDto;
 import com.example.defecttracker.entity.DamageTicket;
+import com.example.defecttracker.entity.User;
 import com.example.defecttracker.repository.DamageTicketRepository;
 import com.example.defecttracker.service.CoilHistoryService;
 import com.example.defecttracker.service.FieldCaseService;
 import com.example.defecttracker.service.TicketQueueService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +46,14 @@ public class DamageTicketController {
     }
 
     @PostMapping
-    public ResponseEntity<DamageTicket> createTicket(@RequestBody CreateTicketRequestDto request) {
+    public ResponseEntity<DamageTicket> createTicket(
+            @RequestBody CreateTicketRequestDto request,
+            HttpServletRequest httpRequest) {
+        User user = (User) httpRequest.getAttribute("currentUser");
+        boolean fieldCase = FieldCaseService.FIELD_LOCATION.equals(request.getDetectedLocation());
+        if (fieldCase && !RolePermissions.canManageFieldCases(user)) {
+            return ResponseEntity.status(403).build();
+        }
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String randomCode = String.format("%04d", (int) (Math.random() * 10000));
         String ticketNumber = "TKT-" + dateStr + "-" + randomCode;

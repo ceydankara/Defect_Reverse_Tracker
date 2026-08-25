@@ -113,6 +113,13 @@ export class DamageAnalysisComponent implements OnInit, AfterViewInit, OnDestroy
     return { ticket: this.returnTicket };
   }
 
+  qualityReturnQueryParams(): Record<string, string> {
+    const params: Record<string, string> = { status: 'all' };
+    if (this.returnTicket) params['ticket'] = this.returnTicket;
+    if (this.batchId.trim()) params['coil'] = this.batchId.trim();
+    return params;
+  }
+
   onStartAnalysis(): void {
     if (!this.batchId.trim()) return alert('Bobin ID giriniz.');
     this.isLoading = true;

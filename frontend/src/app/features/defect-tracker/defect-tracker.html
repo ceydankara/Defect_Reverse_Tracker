@@ -64,9 +64,11 @@
           <div class="input-group">
             <label>Hasar Nerede Fark Edildi?</label>
             <div class="location-btn-group">
-              <button type="button" [class.active]="detectedLocation === 'Üretim Hattı'" (click)="detectedLocation = 'Üretim Hattı'">Üretim Hattı</button>
-              <button type="button" [class.active]="detectedLocation === 'Depo / Sevkiyat'" (click)="detectedLocation = 'Depo / Sevkiyat'">Depo / Sevkiyat</button>
-              <button type="button" [class.active]="detectedLocation === 'Müşteri / Saha'" (click)="detectedLocation = 'Müşteri / Saha'">Müşteri / Saha</button>
+              <button type="button" [class.active]="detectedLocation === 'Üretim Hattı'" (click)="selectLocation('Üretim Hattı')">Üretim Hattı</button>
+              <button type="button" [class.active]="detectedLocation === 'Depo / Sevkiyat'" (click)="selectLocation('Depo / Sevkiyat')">Depo / Sevkiyat</button>
+              @if (auth.canManageFieldCases()) {
+                <button type="button" [class.active]="detectedLocation === 'Müşteri / Saha'" (click)="selectLocation('Müşteri / Saha')">Müşteri / Saha</button>
+              }
             </div>
           </div>
         </div>

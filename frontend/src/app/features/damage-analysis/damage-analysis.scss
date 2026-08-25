@@ -77,6 +77,10 @@
 }
 
 .from-quality-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
   margin-bottom: 14px;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
@@ -86,6 +90,10 @@
   font-size: 0.88rem;
 
   strong { color: var(--accent-text); }
+
+  .banner-return-link {
+    color: var(--accent-text);
+  }
 }
 
 .from-field-banner {
