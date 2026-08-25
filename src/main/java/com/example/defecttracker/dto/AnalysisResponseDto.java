@@ -14,7 +14,7 @@ public class AnalysisResponseDto {
     private String steelGrade;
     private String classificationType;
     private String headline;
-    /** false when bobin yok veya sensör verisi yok — otomatik üretim/lojistik ayrımı yapılmaz */
+   
     private boolean dataAvailable = true;
     private String dataStatusMessage;
 
