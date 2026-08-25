@@ -519,10 +519,7 @@ public class FieldCaseService {
         };
     }
 
-    /**
-     * Müşteriye sevk edilmiş bobinler fabrikadan yalnızca birincil kalite onayı ile çıkar.
-     * Şikâyet dosyası açıldığında sevk öncesi CUSTOMER kararı yoksa otomatik oluşturulur.
-     */
+    
     private Optional<QualityGradeRecord> resolvePriorQualityGrade(String... coilIds) {
         String fallbackId = null;
         for (String rawId : coilIds) {
