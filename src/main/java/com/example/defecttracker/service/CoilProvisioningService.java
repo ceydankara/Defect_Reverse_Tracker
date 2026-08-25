@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 /**
- * Bilinen bobin ID'sini çözer. Sistemde kayıt yoksa otomatik bobin/sensör oluşturmaz.
+ * Bilinen bobin ID'sini çözer. 
  */
 @Service
 @RequiredArgsConstructor

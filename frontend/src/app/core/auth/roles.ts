@@ -18,8 +18,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 export const ANALYSIS_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY, ROLES.MAINTENANCE];
 /** Fabrika kalite kuyruğu ve karar verme */
 export const QUALITY_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY];
-/** Müşteri şikâyet dosyaları */
-export const FIELD_CASE_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.QUALITY, ROLES.SALES];
+/** Müşteri şikâyet dosyaları — kalite personeli giremez */
+export const FIELD_CASE_ROLES: AppRole[] = [ROLES.ADMIN, ROLES.SALES];
 
 export function formatInspectorName(jobTitle?: string | null, fullName?: string | null): string {
   const title = jobTitle?.trim() ?? '';

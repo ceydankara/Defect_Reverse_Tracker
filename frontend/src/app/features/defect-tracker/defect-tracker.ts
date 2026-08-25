@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DefectService } from '../../core/services/defect';
+import { AuthService } from '../../core/services/auth.service';
 import { CoilHistory } from '../../core/models/defect.model';
 
 @Component({
@@ -33,17 +34,26 @@ export class DefectTrackerComponent implements OnInit {
 
   constructor(
     private defectService: DefectService,
+    public auth: AuthService,
     private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
-      if (params.get('saha') === '1') {
+      if (params.get('saha') === '1' && this.auth.canManageFieldCases()) {
         this.isFieldReport = true;
         this.detectedLocation = 'Müşteri / Saha';
         this.department = 'Satış / Müşteri İlişkileri';
       }
     });
+  }
+
+  selectLocation(location: string): void {
+    if (location === 'Müşteri / Saha' && !this.auth.canManageFieldCases()) {
+      return;
+    }
+    this.detectedLocation = location;
+    this.isFieldReport = location === 'Müşteri / Saha';
   }
 
   selectDefectType(type: string): void {
