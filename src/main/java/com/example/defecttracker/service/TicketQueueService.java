@@ -157,8 +157,7 @@ public class TicketQueueService {
             return true;
         }
         if ("pending".equals(status)) {
-            // Bekleyen kuyruk karar verilmiş fabrika bobinlerini de gösterir
-            return true;
+            return STATUS_PENDING.equals(item.getGradeStatus());
         }
         if ("decided".equals(status)) {
             return STATUS_DECIDED.equals(item.getGradeStatus());
