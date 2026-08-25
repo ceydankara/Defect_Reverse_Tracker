@@ -228,10 +228,7 @@ public class AnalysisService {
         return dto;
     }
 
-    /**
-     * Üretim / lojistik yüzdeleri her bobinin sensör sapma profiline göre hesaplanır.
-
-     */
+    
     private ImpactSplit computeImpactSplit(
             String coilId,
             boolean hasProductionAnomaly,
