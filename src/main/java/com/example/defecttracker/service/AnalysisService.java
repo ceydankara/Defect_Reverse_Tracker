@@ -218,14 +218,15 @@ public class AnalysisService {
             AnalysisResponseDto.SensorSummaryDto primarySensor,
             List<AnalysisResponseDto.SensorSummaryDto> summaries) {
 
-        AnalysisResponseDto.RootCauseDto dto = rootCauseResultRepository.findByCoilId(coilId)
-                .map(rc -> toRootCauseDto(rc, anomalyStage))
-                .orElseGet(() -> fallbackRootCause(hasProductionAnomaly, anomalyStage, primarySensor));
-
-        ImpactSplit impact = computeImpactSplit(coilId, hasProductionAnomaly, primarySensor, summaries);
-        dto.setProductionImpactPct(impact.productionPct());
-        dto.setLogisticImpactPct(impact.logisticPct());
-        return dto;
+        return rootCauseResultRepository.findByCoilId(coilId)
+                .map(rc -> {
+                    AnalysisResponseDto.RootCauseDto dto = toRootCauseDto(rc, anomalyStage);
+                    ImpactSplit impact = computeImpactSplit(coilId, hasProductionAnomaly, primarySensor, summaries);
+                    dto.setProductionImpactPct(impact.productionPct());
+                    dto.setLogisticImpactPct(impact.logisticPct());
+                    return dto;
+                })
+                .orElse(null);
     }
 
     
@@ -312,35 +313,6 @@ public class AnalysisService {
         return dto;
     }
 
-    private AnalysisResponseDto.RootCauseDto fallbackRootCause(
-            boolean hasProductionAnomaly,
-            ProcessStage anomalyStage,
-            AnalysisResponseDto.SensorSummaryDto primarySensor) {
-
-        AnalysisResponseDto.RootCauseDto dto = new AnalysisResponseDto.RootCauseDto();
-        if (hasProductionAnomaly && anomalyStage != null) {
-            dto.setStageName(anomalyStage.getStageName());
-            dto.setEquipment("ÜRETİM HATTI");
-            dto.setFaultSource(anomalyStage.getStageName() + " aşamasında proses sapması");
-            dto.setDetectionDetail(primarySensor != null
-                    ? primarySensor.getSensorKey() + " sensöründe limit dışı değer."
-                    : "Üretim hattında tolerans aşımı.");
-            dto.setConfidenceRate(new BigDecimal("90.00"));
-            dto.setProductionImpactPct(88);
-            dto.setLogisticImpactPct(12);
-            dto.setRecommendedAction("İlgili hat bakım ekibini yönlendirin.");
-        } else {
-            dto.setEquipment("DEPO / SEVKİYAT");
-            dto.setFaultSource("Lojistik / taşıma kaynaklı mekanik hasar");
-            dto.setDetectionDetail("Tüm üretim sensörleri nominal. Hasar dış etken profiline uyuyor.");
-            dto.setConfidenceRate(new BigDecimal("88.00"));
-            dto.setProductionImpactPct(8);
-            dto.setLogisticImpactPct(92);
-            dto.setRecommendedAction("Sevkiyat ve depolama kayıtlarını inceleyin.");
-        }
-        return dto;
-    }
-
     private String buildHeadline(
             boolean hasProductionAnomaly,
             ProcessStage anomalyStage,
@@ -374,8 +346,10 @@ public class AnalysisService {
                     .forEach(s -> evidence.add(s.getStageName() + " aşaması nominal aralıkta."));
         } else {
             evidence.add("Tüm " + total + " sensör nominal (" + nominal + "/" + total + ").");
-            evidence.add("Etki dağılımı: Üretim %" + rootCause.getProductionImpactPct()
-                    + " | Lojistik %" + rootCause.getLogisticImpactPct());
+            if (rootCause != null) {
+                evidence.add("Etki dağılımı: Üretim %" + rootCause.getProductionImpactPct()
+                        + " | Lojistik %" + rootCause.getLogisticImpactPct());
+            }
             evidence.add("Üretim hattında eşzamanlı proses anomalisi yok.");
         }
         return evidence;
