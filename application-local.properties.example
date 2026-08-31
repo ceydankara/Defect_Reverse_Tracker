@@ -1,0 +1,7 @@
+# Kopyalayın:
+#   copy application-local.properties.example application-local.properties
+# Sonra Gemini anahtarını yapıştırın. application-local.properties gite gitmez.
+
+spring.ai.google.genai.api-key=BURAYA_GEMINI_ANAHTARI
+spring.ai.model.chat=google-genai
+spring.ai.google.genai.chat.model=gemini-3.1-flash-lite

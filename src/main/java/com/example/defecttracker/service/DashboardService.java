@@ -36,6 +36,12 @@ public class DashboardService {
             "SCRAP", "Hurda"
     );
 
+    public DashboardStatsDto getStats() {
+        User adminView = new User();
+        adminView.setRole("ADMIN");
+        return getStats(adminView);
+    }
+
     public DashboardStatsDto getStats(User user) {
         DashboardStatsDto stats = new DashboardStatsDto();
         stats.setTotalCoils(coilRepository.count());
