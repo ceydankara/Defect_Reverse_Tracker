@@ -202,6 +202,16 @@ public class FieldCaseService {
         }
 
         boolean production = "PRODUCTION".equals(analysis.getClassificationType());
+        return computeResponsibilityHeuristic(analysis, ticket, priorGrade, priorReportCount, production);
+    }
+
+    private ResponsibilityAnalysisDto computeResponsibilityHeuristic(
+            AnalysisResponseDto analysis,
+            DamageTicket ticket,
+            Optional<QualityGradeRecord> priorGrade,
+            int priorReportCount,
+            boolean production) {
+
         int prodBase = analysis.getRootCause() != null
                 ? safeInt(analysis.getRootCause().getProductionImpactPct()) : 0;
         int logBase = analysis.getRootCause() != null
